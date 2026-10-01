@@ -153,9 +153,6 @@ class Player {
     if (this.tabs?.videoId !== t.videoId) this.tabs = null;
     this.updateMetadata();
     if (this.queue.length - index <= 3) this.extend();
-    if (this.sleepEndOfTrack && index !== 0) {
-      /* handled in onEnded */
-    }
     try {
       const id = this.video && t.type === 'song' && t.counterpart ? t.counterpart.videoId : t.videoId;
       let s: Stream;
@@ -175,7 +172,8 @@ class Player {
       this.el.src = s.url;
       if (autoplay) {
         await this.el.play().catch((e) => {
-          if (e?.name !== 'AbortError') throw e;
+          // source load failures are handled by the media 'error' event (client fallback)
+          if (e?.name !== 'AbortError' && e?.name !== 'NotSupportedError') throw e;
         });
       } else {
         this.loading = false;
@@ -200,6 +198,7 @@ class Player {
       this.retries++;
       this.failed = [...this.failed, this.stream.client];
       invalidateStream(t.videoId);
+      if (t.counterpart) invalidateStream(t.counterpart.videoId);
       const at = this.el.currentTime || this.time;
       this.load(this.index, true, at);
       return;
