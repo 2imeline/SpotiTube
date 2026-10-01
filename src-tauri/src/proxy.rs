@@ -156,3 +156,30 @@ fn handle(req: Request, client: &reqwest::blocking::Client, token: &str) {
     let resp = Response::new(StatusCode(status), headers, body, len, None);
     let _ = req.respond(resp);
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn caps_open_ended_ranges() {
+        assert_eq!(bounded_range(None), format!("bytes=0-{}", CHUNK - 1));
+        assert_eq!(bounded_range(Some("bytes=0-")), format!("bytes=0-{}", CHUNK - 1));
+        assert_eq!(bounded_range(Some("bytes=1000-")), format!("bytes=1000-{}", 1000 + CHUNK - 1));
+    }
+
+    #[test]
+    fn keeps_small_explicit_ranges() {
+        assert_eq!(bounded_range(Some("bytes=10-20")), "bytes=10-20");
+        assert_eq!(bounded_range(Some("bytes=0-99999999")), format!("bytes=0-{}", CHUNK - 1));
+    }
+
+    #[test]
+    fn parses_query() {
+        let u = "/stream?t=abc&u=https%3A%2F%2Fr1.googlevideo.com%2Fvideoplayback%3Fa%3D1%26b%3D2&ua=X%20Y";
+        assert_eq!(query_param(u, "t").as_deref(), Some("abc"));
+        assert_eq!(query_param(u, "u").as_deref(), Some("https://r1.googlevideo.com/videoplayback?a=1&b=2"));
+        assert_eq!(query_param(u, "ua").as_deref(), Some("X Y"));
+        assert_eq!(query_param(u, "zz"), None);
+    }
+}

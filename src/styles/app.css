@@ -1139,6 +1139,9 @@ img {
   font-size: 14px;
   cursor: default;
 }
+.track:focus {
+  outline: none;
+}
 .track:hover,
 .track.menu-open {
   background: var(--row-hover);

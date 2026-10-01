@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { getPlaylist, editPlaylist, deletePlaylist, getAlbumBrowseId, type PlaylistPage } from '../api/ytm';
+  import { getPlaylist, editPlaylist, getAlbumBrowseId, collaborationLink, type PlaylistPage } from '../api/ytm';
   import EntityHeader from '../components/EntityHeader.svelte';
   import StickyHead from '../components/StickyHead.svelte';
   import TrackList from '../components/TrackList.svelte';
@@ -97,7 +97,25 @@
     const h = data!.header;
     const card: Card = { kind: 'card', type: 'playlist', title: h.title, subtitle: '', thumbnails: h.thumbnails, browseId: 'VL' + id, playlistId: id, menu: { editablePlaylistId: owned ? id : undefined, radio: h.radio, shuffle: h.shuffle, inLibrary: saved } };
     const actions = cardMenu(card, { onRemoved: () => go('/') });
-    if (owned) actions.unshift({ label: 'Edit details', icon: 'edit', run: edit }, { label: '', divider: true });
+    if (owned)
+      actions.unshift(
+        { label: 'Edit details', icon: 'edit', run: edit },
+        {
+          label: 'Invite collaborators',
+          icon: 'user',
+          run: async () => {
+            try {
+              const link = await collaborationLink(id);
+              if (!link) return ui.toast('YouTube Music did not return an invite link');
+              await navigator.clipboard.writeText(link).catch(() => {});
+              ui.toast('Invite link copied to clipboard');
+            } catch (e) {
+              ui.error(e);
+            }
+          },
+        },
+        { label: '', divider: true },
+      );
     actions.push({ label: 'Make a copy', icon: 'copy', run: () => newPlaylistDialog(undefined, id) });
     ui.openMenu(e, actions);
   }
@@ -113,20 +131,20 @@
 
   // reorder tracks in owned playlists via drag & drop (Spotify-like)
   async function moveTrack(from: number, to: number) {
-    const a = tracks[from], b = tracks[to];
+    const a = tracks[from];
     if (!a?.menu?.setVideoId) return;
     const next = [...tracks];
     next.splice(from, 1);
     next.splice(to, 0, a);
     tracks = next;
     try {
+      // YouTube Music moves an item *before* its new successor
       const successor = next[to + 1]?.menu?.setVideoId;
       await editPlaylist(id, { moveItem: [a.menu.setVideoId, successor] });
     } catch (e) {
       ui.error(e);
       onRemoved();
     }
-    void b;
   }
 </script>
 
@@ -173,7 +191,7 @@
         </div>
       </div>
       {#if tracks.length}
-        <TrackList tracks={shown} source={{ title: isLiked ? 'Liked Music' : h.title, path }} ctx={{ playlistId: owned ? id : undefined, onRemoved }} loadMore={more && !filter ? loadMore : undefined} />
+        <TrackList tracks={shown} source={{ title: isLiked ? 'Liked Music' : h.title, path }} ctx={{ playlistId: owned ? id : undefined, onRemoved }} loadMore={more && !filter ? loadMore : undefined} onmove={owned && !filter && !isLiked ? moveTrack : undefined} />
       {:else}
         <div class="center-msg" style="min-height:20vh"><div>This playlist is empty. Find songs to add with search.</div><button class="pill-btn" onclick={() => go('/search')}>Find songs</button></div>
       {/if}

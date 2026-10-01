@@ -18,6 +18,7 @@
     useTrackNumbers = false,
     onplay,
     loadMore,
+    onmove,
   }: {
     tracks: Track[];
     source?: QueueSource;
@@ -30,7 +31,11 @@
     useTrackNumbers?: boolean;
     onplay?: (index: number) => void;
     loadMore?: () => Promise<void>;
+    /** enables drag & drop reordering */
+    onmove?: (from: number, to: number) => void;
   } = $props();
+  let dragFrom = $state<number | null>(null);
+  let dragOver = $state<number | null>(null);
 
   const ROW = 56;
   const VIRTUAL_MIN = 150;
@@ -104,6 +109,16 @@
   {/if}
   {#if virtual}<div style="height:{start * ROW}px"></div>{/if}
   {#each visible as t, i (t.qid ?? `${t.videoId}-${i + offset}`)}
+    <div
+      class="drag-wrap"
+      class:drop-target={dragOver === i + offset && dragFrom !== i + offset}
+      draggable={!!onmove}
+      role="presentation"
+      ondragstart={(e) => { dragFrom = i + offset; e.dataTransfer?.setData('text/plain', String(i + offset)); }}
+      ondragover={(e) => { if (dragFrom != null) { e.preventDefault(); dragOver = i + offset; } }}
+      ondrop={(e) => { e.preventDefault(); if (dragFrom != null && dragFrom !== i + offset) onmove?.(dragFrom, i + offset); dragFrom = dragOver = null; }}
+      ondragend={() => (dragFrom = dragOver = null)}
+    >
     <TrackRow
       track={t}
       n={useTrackNumbers && t.trackNumber ? t.trackNumber : i + offset + numberFrom}
@@ -115,9 +130,16 @@
       onselect={() => (selected = i + offset)}
       onplay={() => play(i + offset)}
     />
+    </div>
   {/each}
   {#if virtual}<div style="height:{Math.max(0, tracks.length - end) * ROW}px"></div>{/if}
   {#if loadMore}
     <div bind:this={sentinel} class="load-more">{#if loadingMore}<span class="spinner"></span>{/if}</div>
   {/if}
 </div>
+
+<style>
+  .drag-wrap.drop-target {
+    box-shadow: inset 0 2px 0 var(--accent);
+  }
+</style>

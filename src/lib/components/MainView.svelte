@@ -18,24 +18,30 @@
   const r = $derived(router.route);
   const key = $derived(router.pos + '|' + r.path);
 
-  // save / restore scroll position per history entry
-  let lastPos = -1;
+  // save / restore scroll position per history entry (Spotify-style back/forward)
+  let restoring = false;
   $effect(() => {
     const pos = router.pos;
     r.path;
-    if (lastPos >= 0 && scroller) router.scroll.set(lastPos, scroller.scrollTop);
-    lastPos = pos;
+    restoring = true;
     const y = router.scroll.get(pos) ?? 0;
     tick().then(() => {
       scroller.scrollTop = 0;
       ui.scrollY = 0;
-      if (y) setTimeout(() => (scroller.scrollTop = y), 250);
+      setTimeout(() => {
+        if (y) scroller.scrollTop = y;
+        restoring = false;
+      }, y ? 300 : 0);
     });
   });
+  function onScroll() {
+    ui.scrollY = scroller.scrollTop;
+    if (!restoring) router.scroll.set(router.pos, scroller.scrollTop);
+  }
 </script>
 
 <main class="main-view">
-  <div class="main-scroll" bind:this={scroller} onscroll={() => (ui.scrollY = scroller.scrollTop)}>
+  <div class="main-scroll" bind:this={scroller} onscroll={onScroll}>
     {#key key}
       {#if r.name === 'home'}
         <Home />

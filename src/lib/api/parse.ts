@@ -634,7 +634,7 @@ export function parseShelf(section: any): Shelf | null {
   if ((r = section.musicShelfRenderer)) {
     const items = parseItems(r.contents);
     const more = browseOf(nav(r, 'bottomEndpoint')) ?? browseOf(nav(r, 'title', 'runs', 0, 'navigationEndpoint'));
-    return { title: text(r.title), more, items, layout: layoutFor(items, 'tracks') };
+    return { title: text(r.title), more, items, layout: layoutFor(items, 'cards') };
   }
   if ((r = section.musicPlaylistShelfRenderer)) {
     const items = parseItems(r.contents);

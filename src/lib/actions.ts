@@ -28,6 +28,10 @@ export function artistRoute(id?: string | null) {
 export function endpointRoute(m?: Endpoint): string | null {
   if (!m?.browseId) return null;
   const id = m.browseId;
+  if (id === '__search__') {
+    const [q, f] = (m.params ?? '').split('\u0000');
+    return `/search?q=${encodeURIComponent(q)}&f=${f}`;
+  }
   if (id.startsWith('VL')) return `/playlist/${id.slice(2)}`;
   if (id.startsWith('MPRE')) return `/album/${id}`;
   if (id.startsWith('MPSP')) return `/podcast/${id}`;
@@ -240,6 +244,9 @@ export function trackMenu(t: Track, ctx: TrackMenuContext = {}): MenuAction[] {
     );
   }
   a.push({ label: 'Start radio', icon: 'radio', run: () => player.startRadio({ videoId: t.videoId, title: t.title }) });
+  if (t.type === 'episode' && auth.loggedIn) {
+    a.push({ label: 'Save episode for later', icon: 'clock', run: () => addTracksToPlaylist('SE', 'Episodes for later', [t.videoId]) });
+  }
   a.push({ label: '', divider: true });
   const artistId = t.artists.find((x) => x.id)?.id ?? t.menu?.artistId;
   if (artistId) a.push({ label: t.type === 'episode' ? 'Go to podcast' : 'Go to artist', icon: 'artist', run: () => go(t.type === 'episode' && artistId.startsWith('MPSP') ? `/podcast/${artistId}` : `/artist/${artistId}`) });

@@ -208,7 +208,7 @@
 
     <h2>About</h2>
     <div class="set-row">
-      <div class="l"><div class="t">SpotiTube 1.0.0</div><div class="d">A lightweight native YouTube Music client. Not affiliated with Google, YouTube or Spotify.</div></div>
+      <div class="l"><div class="t">SpotiTube 1.0.1</div><div class="d">A lightweight native YouTube Music client. Not affiliated with Google, YouTube or Spotify.</div></div>
       <Icon name="info" size={20} />
     </div>
   </div>

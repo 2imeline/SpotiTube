@@ -687,6 +687,12 @@ export async function editPlaylist(playlistId: string, e: PlaylistEdit) {
   return ytmWrite('browse/edit_playlist', { playlistId: playlistId.replace(/^VL/, ''), actions });
 }
 
+/** Creates (or returns) a collaboration invite link for an owned playlist. */
+export async function collaborationLink(playlistId: string): Promise<string | null> {
+  const r = await ytmWrite('browse/edit_playlist', { playlistId: playlistId.replace(/^VL/, ''), actions: [{ action: 'ACTION_CREATE_COLLABORATION_INVITE_LINK' }] });
+  return r.collaborationInviteLink ?? null;
+}
+
 /** Returns 'ok' or 'duplicate' when YTM asks to confirm adding duplicates. */
 export async function addToPlaylist(playlistId: string, videoIds: string[], allowDuplicates = false, sourcePlaylist?: string): Promise<'ok' | 'duplicate'> {
   const actions: any[] = videoIds.map((v) => ({ action: 'ACTION_ADD_VIDEO', addedVideoId: v, ...(allowDuplicates ? { dedupeOption: 'DEDUPE_OPTION_SKIP' } : {}) }));

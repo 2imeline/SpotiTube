@@ -249,7 +249,7 @@ fn logout(app: AppHandle, state: State<'_, AppState>) {
     let _ = app.emit("auth-changed", false);
 }
 
-const LOGIN_URL: &str = "https://accounts.google.com/ServiceLogin?ltmpl=music&service=youtube&uilel=3&passive=true&continue=https%3A%2F%2Fwww.youtube.com%2Fsignin%3Faction_handle_signin%3Dtrue%26app%3Ddesktop%26hl%3Den%26next%3Dhttps%253A%252F%252Fmusic.youtube.com%252F";
+const LOGIN_URL: &str = "https://accounts.google.com/ServiceLogin?ltmpl=music&service=youtube&uilel=3&continue=https%3A%2F%2Fwww.youtube.com%2Fsignin%3Faction_handle_signin%3Dtrue%26app%3Ddesktop%26hl%3Den%26next%3Dhttps%253A%252F%252Fmusic.youtube.com%252F";
 
 fn capture_login(app: AppHandle, win: tauri::WebviewWindow) {
     // give the page a moment to settle its cookies
@@ -478,4 +478,36 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running SpotiTube");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn youtube_hosts() {
+        assert!(is_youtube_host("https://music.youtube.com/youtubei/v1/browse"));
+        assert!(is_youtube_host("https://www.youtube.com/iframe_api"));
+        assert!(!is_youtube_host("https://lrclib.net/api/get"));
+        assert!(!is_youtube_host("https://evil.com/?youtube.com"));
+        assert!(!is_youtube_host("https://notyoutube.com/"));
+    }
+
+    #[test]
+    fn sapisid_hash_format() {
+        let h = sapisid_hash("abc", "https://music.youtube.com");
+        assert!(h.starts_with("SAPISIDHASH "));
+        let first = h.split(' ').nth(1).unwrap();
+        let (ts, digest) = first.split_once('_').unwrap();
+        assert!(ts.parse::<u64>().is_ok());
+        assert_eq!(digest.len(), 40);
+    }
+
+    #[test]
+    fn cookie_header_adds_consent() {
+        let mut a = AuthData::default();
+        a.cookies.insert("SAPISID".into(), "x".into());
+        assert!(a.logged_in());
+        assert!(a.cookie_header().contains("SOCS=CAI"));
+    }
 }

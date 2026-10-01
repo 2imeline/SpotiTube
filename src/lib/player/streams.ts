@@ -330,6 +330,6 @@ export function resolveStream(videoId: string, video = false, skip: string[] = [
     throw new Error(errors[0]?.replace(/^\w+: /, '') || 'This track is unavailable');
   })();
   inflight.set(key, p);
-  p.finally(() => inflight.delete(key));
+  p.catch(() => {}).finally(() => inflight.delete(key));
   return p;
 }

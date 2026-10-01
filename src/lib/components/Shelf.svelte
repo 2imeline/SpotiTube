@@ -49,7 +49,7 @@
     <p class="selectable" style="color:var(--text-sub);line-height:1.6;white-space:pre-line;max-width:800px">{shelf.text}</p>
   {:else if allMoods}
     <div class="mood-grid" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px">
-      {#each shelf.items as m}
+      {#each expanded || shelf.items.length <= 16 ? shelf.items : shelf.items.slice(0, 16) as m}
         {@const c = m as CardT}
         <div class="mood-chip" style="--c:{c.color ?? 'var(--accent)'}" role="button" tabindex="0" onclick={() => openCard(c)} onkeydown={(e) => e.key === 'Enter' && openCard(c)}>{c.title}</div>
       {/each}

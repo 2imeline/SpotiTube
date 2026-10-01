@@ -75,7 +75,7 @@ interface CacheEntry {
 }
 const cache = new Map<string, CacheEntry>();
 const CACHE_TTL = 3 * 60 * 1000;
-const CACHE_MAX = 40;
+const CACHE_MAX = 20;
 
 export function clearApiCache() {
   cache.clear();

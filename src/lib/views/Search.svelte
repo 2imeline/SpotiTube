@@ -68,7 +68,18 @@
     const s = res?.shelves.find((x) => x !== top && x.layout === 'tracks' && x.items.some((i) => i.kind === 'track' && i.type === 'song'));
     return (s?.items.filter((i): i is Track => i.kind === 'track') ?? []).slice(0, 4);
   });
-  const rest = $derived((res?.shelves ?? []).filter((s) => s !== top && !(songs.length && s.items.includes(songs[0]))));
+  const TITLE_FILTER: Record<string, SearchFilter> = {
+    songs: 'songs', videos: 'videos', albums: 'albums', artists: 'artists', 'community playlists': 'community_playlists',
+    'featured playlists': 'featured_playlists', podcasts: 'podcasts', episodes: 'episodes', profiles: 'profiles',
+  };
+  const rest = $derived(
+    (res?.shelves ?? [])
+      .filter((s) => s !== top && !(songs.length && s.items.includes(songs[0])))
+      .map((s) => {
+        const fk = TITLE_FILTER[s.title.toLowerCase()];
+        return fk && !s.more ? { ...s, more: { browseId: '__search__', params: `${q}\u0000${fk}` } } : s;
+      }),
+  );
   const listTracks = $derived(items.filter((i): i is Track => i.kind === 'track'));
   const listCards = $derived(items.filter((i): i is Card => i.kind === 'card'));
 

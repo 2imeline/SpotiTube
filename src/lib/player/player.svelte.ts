@@ -57,6 +57,8 @@ class Player {
   private unshuffled: Track[] | null = null;
   private loadToken = 0;
   private failed: string[] = [];
+  private failedFor = '';
+  private consecutiveFails = 0;
   private retries = 0;
   private pendingSeek = 0;
   private registered = '';
@@ -99,6 +101,7 @@ class Player {
       this.playing = true;
       this.loading = false;
       this.retries = 0;
+      this.consecutiveFails = 0;
       this.registerPlay();
     });
     v.addEventListener('pause', () => {
@@ -134,6 +137,11 @@ class Player {
     const token = ++this.loadToken;
     const t = this.queue[index];
     if (!t) return;
+    if (this.failedFor !== t.videoId) {
+      this.failed = [];
+      this.retries = 0;
+      this.failedFor = t.videoId;
+    }
     this.index = index;
     this.loading = true;
     this.error = null;
@@ -150,7 +158,15 @@ class Player {
     }
     try {
       const id = this.video && t.type === 'song' && t.counterpart ? t.counterpart.videoId : t.videoId;
-      const s = await resolveStream(id, this.video, this.failed);
+      let s: Stream;
+      try {
+        s = await resolveStream(id, this.video, this.failed);
+      } catch (err) {
+        if (!this.video) throw err;
+        // no muxed video stream available: keep playing the audio
+        if (token === this.loadToken) ui.toast('Video is not available for this track, playing audio');
+        s = await resolveStream(t.videoId, false, this.failed);
+      }
       if (token !== this.loadToken) return;
       this.stream = s;
       if (settings.normalize && s.loudnessDb != null && s.loudnessDb > 0) this.gain = Math.pow(10, -s.loudnessDb / 20);
@@ -168,8 +184,10 @@ class Player {
       if (token !== this.loadToken) return;
       this.loading = false;
       this.error = e?.message ?? String(e);
+      this.consecutiveFails++;
       ui.toast(`Can't play "${t.title}": ${this.error}`, 'error', 5000);
-      if (autoplay && index < this.queue.length - 1) setTimeout(() => token === this.loadToken && this.next(true), 1200);
+      // skip unplayable tracks, but don't race through the whole queue if streaming is broken
+      if (autoplay && index < this.queue.length - 1 && this.consecutiveFails < 3) setTimeout(() => token === this.loadToken && this.next(true), 1200);
     }
   }
 
