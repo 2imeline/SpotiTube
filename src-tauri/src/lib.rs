@@ -6,6 +6,7 @@
 //! local proxy (see `proxy.rs`).
 
 mod discord;
+mod log;
 mod proxy;
 mod spotify;
 mod updater;
@@ -461,6 +462,7 @@ pub fn run() {
                 .path()
                 .app_data_dir()
                 .unwrap_or_else(|_| std::env::temp_dir().join("spotitube"));
+            log::init(&dir);
             let auth_path = dir.join("session.json");
             let auth: AuthData = std::fs::read_to_string(&auth_path)
                 .ok()
@@ -496,6 +498,8 @@ pub fn run() {
             discord_set_activity,
             updater::check_update,
             updater::install_update,
+            log::log_error,
+            log::read_log,
             spotify::spotify_login,
             spotify::spotify_logout,
             spotify::spotify_web_connect,

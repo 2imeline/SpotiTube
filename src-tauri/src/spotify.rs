@@ -283,6 +283,21 @@ fn has_session(w: &tauri::WebviewWindow) -> bool {
         .unwrap_or(false)
 }
 
+/// Tracks whether the web window is still open, so background threads
+/// don't touch a closing webview (never blocks: the close handler runs on
+/// the UI thread, which cookie calls also wait on).
+#[derive(Clone)]
+struct Life(Arc<std::sync::atomic::AtomicBool>);
+impl Life {
+    fn with<R>(&self, f: impl FnOnce() -> R) -> Option<R> {
+        self.0.load(std::sync::atomic::Ordering::SeqCst).then(f)
+    }
+    /// marks the window gone; returns false if it already was
+    fn end(&self) -> bool {
+        self.0.swap(false, std::sync::atomic::Ordering::SeqCst)
+    }
+}
+
 fn open_web(app: &AppHandle, visible: bool) -> Result<(), String> {
     if let Some(w) = app.get_webview_window(WEB_LABEL) {
         if visible {
@@ -293,9 +308,11 @@ fn open_web(app: &AppHandle, visible: bool) -> Result<(), String> {
     }
     *app.state::<AppState>().spotify.web_visible.lock() = visible;
     let web = app.state::<AppState>().spotify.web.clone();
+    let life = Life(Arc::new(std::sync::atomic::AtomicBool::new(true)));
+    let (life1, life2, life3) = (life.clone(), life.clone(), life.clone());
     let handle = app.clone();
     let handle2 = app.clone();
-    WebviewWindowBuilder::new(app, WEB_LABEL, WebviewUrl::External("https://open.spotify.com/".parse().unwrap()))
+    let w = WebviewWindowBuilder::new(app, WEB_LABEL, WebviewUrl::External("https://open.spotify.com/".parse().unwrap()))
         .title("Sign in to Spotify")
         .inner_size(460.0, 720.0)
         .center()
@@ -310,39 +327,51 @@ fn open_web(app: &AppHandle, visible: bool) -> Result<(), String> {
             }
             let app = handle.clone();
             let web = web.clone();
+            let life = life1.clone();
             let tok = tok.to_string();
             let ct = ct.to_string();
             // cookie access must not run on the UI thread (WebView2)
             std::thread::spawn(move || {
-                if !has_session(&w) {
-                    return; // anonymous token: wait for the user to log in
+                if life.with(|| has_session(&w)) != Some(true) {
+                    return; // anonymous token (wait for the user to log in) or window gone
                 }
                 *web.lock() = Some(WebToken { token: tok, client_token: ct, at: now() });
                 // tell the UI only after an interactive sign-in, not on silent refreshes
                 if *app.state::<AppState>().spotify.web_visible.lock() {
                     let _ = app.emit("spotify-web-changed", true);
                 }
-                // got what we need: free the web player's memory
-                let _ = w.close();
+                // got what we need: free the web player's memory (once)
+                if life.end() {
+                    let _ = w.close();
+                }
             });
         })
         .on_page_load(move |w, p| {
             if p.event() == PageLoadEvent::Finished {
                 let app = handle2.clone();
+                let life = life2.clone();
                 std::thread::spawn(move || {
                     std::thread::sleep(Duration::from_secs(2));
+                    let signed_in = life.with(|| has_session(&w));
                     // not signed in and opened hidden: show it so the user can log in
-                    if !has_session(&w) && !*app.state::<AppState>().spotify.web_visible.lock() {
+                    if signed_in == Some(false) && !*app.state::<AppState>().spotify.web_visible.lock() {
                         *app.state::<AppState>().spotify.web_visible.lock() = true;
-                        let _ = w.show();
-                        let _ = w.set_skip_taskbar(false);
-                        let _ = w.set_focus();
+                        life.with(|| {
+                            let _ = w.show();
+                            let _ = w.set_skip_taskbar(false);
+                            let _ = w.set_focus();
+                        });
                     }
                 });
             }
         })
         .build()
         .map_err(|e| e.to_string())?;
+    w.on_window_event(move |e| {
+        if matches!(e, tauri::WindowEvent::CloseRequested { .. } | tauri::WindowEvent::Destroyed) {
+            life3.end();
+        }
+    });
     Ok(())
 }
 
@@ -470,6 +499,7 @@ pub async fn spotify_get(app: AppHandle, state: State<'_, AppState>, url: String
     }
     let text = r.text().await.map_err(|e| e.to_string())?;
     if !status.is_success() {
+        crate::log::write(&format!("spotify {status} via {via}: {}", url.split('?').next().unwrap_or("")));
         return Err(format!("Spotify returned HTTP {status}"));
     }
     Ok(text)

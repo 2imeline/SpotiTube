@@ -1,5 +1,5 @@
 // Playing Spotify lists: tracks are matched to YouTube Music as they come up.
-import { getPlaylist, type SpPlaylistPage } from '../api/spotify';
+import { getPlaylist, getPlaylistTracksWeb, type SpPlaylistPage } from '../api/spotify';
 import { player } from '../player/player.svelte';
 import { spotify } from '../stores/spotify.svelte';
 import { ui } from '../stores/ui.svelte';
@@ -12,13 +12,27 @@ export async function loadSpPlaylist(id: string): Promise<SpPlaylistPage> {
   const hit = cache.get(id);
   if (hit && Date.now() - hit.at < 5 * 60_000) return hit.page;
   let page: SpPlaylistPage;
+  let via: 'oauth' | 'web' = spotify.linked ? 'oauth' : 'web';
   try {
-    page = await getPlaylist(id, spotify.linked ? 'oauth' : 'web');
+    page = await getPlaylist(id, via);
   } catch (e) {
-    if (!spotify.linked || !spotify.web) throw e;
-    page = await getPlaylist(id, 'web');
+    if (via === 'web' || !spotify.web) throw e;
+    page = await getPlaylist(id, (via = 'web'));
   }
-  cache.set(id, { at: Date.now(), page });
+  // Linked apps only get the songs of playlists you own or collaborate on:
+  // fetch someone else's songs through the web session instead.
+  if (!page.tracks.length && spotify.web) {
+    if (via === 'oauth') page = await getPlaylist(id, 'web').catch(() => page);
+    if (!page.tracks.length) {
+      const tracks = await getPlaylistTracksWeb(id).catch((e) => {
+        console.warn('web playlist fallback failed', e);
+        return [];
+      });
+      page = { ...page, tracks };
+    }
+  }
+  page.hidden = !page.tracks.length && !spotify.web && page.playlist.ownerId !== spotify.me?.id;
+  if (page.tracks.length) cache.set(id, { at: Date.now(), page });
   return page;
 }
 

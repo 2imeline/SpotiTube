@@ -1,4 +1,5 @@
 import type { Item, Track, Card } from '../api/types';
+import { logError } from '../util/log';
 
 export interface Toast {
   id: number;
@@ -53,6 +54,7 @@ class UI {
   }
   error(e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
+    logError('ui', e);
     this.toast(msg, 'error', 5000);
   }
   openMenu(e: MouseEvent | { x: number; y: number }, actions: MenuAction[], owner?: unknown) {

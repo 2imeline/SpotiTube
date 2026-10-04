@@ -219,7 +219,13 @@ img {
   display: flex;
   gap: 8px;
   align-items: center;
-  width: min(560px, 46vw);
+  /* leave room for the account buttons and window controls on narrow windows */
+  width: max(240px, min(560px, 46vw, calc(100vw - 600px)));
+}
+@media (max-width: 1180px) {
+  .tb-right .pill-btn.ghost {
+    display: none;
+  }
 }
 .home-btn {
   width: 48px;
@@ -2404,6 +2410,18 @@ html.transparent-window .app {
   line-height: 1;
   white-space: nowrap;
   vertical-align: middle;
+}
+.src-tag {
+  max-width: 100%;
+  min-width: 0;
+}
+.src-tag > .icon {
+  flex: none;
+}
+.src-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 .src-tag.spotify {
   color: #1ed760;

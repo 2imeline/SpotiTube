@@ -4,6 +4,9 @@ import './styles/apple.css';
 import { mount } from 'svelte';
 import App from './App.svelte';
 import { applySettings, saveSettings } from './lib/stores/settings.svelte';
+import { installErrorLogging } from './lib/util/log';
+
+installErrorLogging();
 
 applySettings();
 saveSettings();

@@ -123,7 +123,7 @@
             <Img thumbs={me?.image ? [{ url: me.image }] : []} size={56} class="round" icon="user" />
             <div class="m">
               <div class="a">{me?.name ?? 'Spotify'}</div>
-              <SourceTag source="spotify" label={spotify.linked && spotify.web ? 'Spotify · linked + friends' : spotify.linked ? 'Spotify · linked' : spotify.web ? 'Spotify · web session' : 'Not connected'} />
+              <SourceTag source="spotify" label={spotify.available ? 'Spotify' : 'Not connected'} />
             </div>
             {#if me}
               <button class="pill-btn outline" onclick={() => go(`/sp-user/${encodeURIComponent(me!.id)}`)}>View</button>

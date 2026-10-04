@@ -16,6 +16,7 @@
   import SpUser from '../spotify/SpUser.svelte';
   import SpPlaylist from '../spotify/SpPlaylist.svelte';
   import { tick } from 'svelte';
+  import { logError } from '../util/log';
 
   let scroller: HTMLDivElement;
   const r = $derived(router.route);
@@ -46,6 +47,7 @@
 <main class="main-view">
   <div class="main-scroll" bind:this={scroller} onscroll={onScroll}>
     {#key key}
+      <svelte:boundary onerror={(e) => logError(`page ${r.path}`, e)}>
       {#if r.name === 'home'}
         <Home />
       {:else if r.name === 'search'}
@@ -89,6 +91,14 @@
       {:else}
         <div class="center-msg"><h2>Page not found</h2></div>
       {/if}
+      {#snippet failed(error, reset)}
+        <div class="center-msg">
+          <h2>Something went wrong on this page</h2>
+          <div style="color:var(--text-sub);max-width:520px">{(error as any)?.message ?? String(error)}</div>
+          <button class="pill-btn" onclick={reset}>Try again</button>
+        </div>
+      {/snippet}
+      </svelte:boundary>
     {/key}
   </div>
 </main>

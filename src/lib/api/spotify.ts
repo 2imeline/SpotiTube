@@ -67,6 +67,8 @@ export interface SpProfile {
 export interface SpPlaylistPage {
   playlist: SpPlaylist;
   tracks: Track[];
+  /** songs withheld by Spotify (someone else's playlist without the web session) */
+  hidden?: boolean;
 }
 
 // ------------------------------------------------------------------ helpers
@@ -180,6 +182,29 @@ export async function getPlaylist(id: string, via: Via = 'auto'): Promise<SpPlay
     next = page.next;
   }
   return { playlist: playlistOf(p), tracks };
+}
+
+/**
+ * Track list through the web player's own playlist service. Used when the
+ * Web API hides the songs (it only returns them for playlists you own or
+ * collaborate on).
+ */
+export async function getPlaylistTracksWeb(id: string, limit = 1500): Promise<Track[]> {
+  const r = await spGet(`${SPCLIENT}/playlist/v2/playlist/${encodeURIComponent(id)}?decorate=revision,length,attributes,timestamp,owner&market=from_token`, 'web');
+  const ids: string[] = (r?.contents?.items ?? [])
+    .map((i: any) => String(i.uri ?? ''))
+    .filter((u: string) => u.startsWith('spotify:track:'))
+    .map(idOf)
+    .slice(0, limit);
+  const out: Track[] = [];
+  for (let i = 0; i < ids.length; i += 50) {
+    const page = await spGet(`${API}/tracks?ids=${ids.slice(i, i + 50).join(',')}&market=from_token`, 'web');
+    for (const t of page?.tracks ?? []) {
+      const tr = toTrack(t);
+      if (tr) out.push(tr);
+    }
+  }
+  return out;
 }
 
 // ------------------------------------------------------------------ private (web player) endpoints

@@ -75,7 +75,7 @@
         <SourceTag source="spotify" />
         {#if p.owner}<span class="dot"></span>{#if p.ownerId}<a href="#/" onclick={(e) => { e.preventDefault(); go(`/sp-user/${encodeURIComponent(p.ownerId!)}`); }}>{p.owner}</a>{:else}<b>{p.owner}</b>{/if}{/if}
         {#if p.followers}<span class="dot"></span><span>{p.followers.toLocaleString()} saves</span>{/if}
-        <span class="dot"></span><span>{tracks.length} songs{totalSec ? `, ${length}` : ''}</span>
+        <span class="dot"></span><span>{tracks.length || p.tracks || 0} songs{totalSec ? `, ${length}` : ''}</span>
       {/snippet}
     </EntityHeader>
     <div style="position:relative;background:linear-gradient(rgba(0,0,0,.6), var(--panel) 240px)">
@@ -94,7 +94,17 @@
       {#if tracks.length}
         <TrackList tracks={shown} source={{ title: p.name, path }} />
       {:else}
-        <div class="center-msg" style="min-height:20vh"><div>This playlist is empty.</div></div>
+        <div class="center-msg" style="min-height:20vh">
+          {#if data.hidden}
+            <div style="max-width:520px">Spotify only shows linked apps the songs of playlists you own or collaborate on. Turn on <b>Friends &amp; profiles</b> to see the songs in other people's playlists.</div>
+            <button class="pill-btn" onclick={() => go('/settings?s=spotify')}>Open Spotify settings</button>
+          {:else if p.tracks}
+            <div style="max-width:520px">Spotify didn't return the songs of this playlist ({p.tracks} songs). Try again in a moment.</div>
+            <button class="pill-btn" onclick={load}>Retry</button>
+          {:else}
+            <div>This playlist is empty.</div>
+          {/if}
+        </div>
       {/if}
     </div>
   {/if}

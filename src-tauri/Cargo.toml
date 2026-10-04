@@ -1,6 +1,6 @@
 [package]
 name = "spotitube"
-version = "1.5.0"
+version = "1.5.1"
 description = "SpotiTube - a lightweight native YouTube Music desktop client"
 authors = ["SpotiTube"]
 edition = "2021"
@@ -31,5 +31,6 @@ parking_lot = "0.12"
 codegen-units = 1
 lto = true
 opt-level = "s"
-panic = "abort"
+# unwind: a panic in a background task is logged instead of closing the app
+panic = "unwind"
 strip = true

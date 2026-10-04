@@ -12,8 +12,18 @@
   import { openExternal } from '../actions';
   import type { SpUser } from '../api/spotify';
   import { onMount } from 'svelte';
+  import { call } from '../api/transport';
 
   const REDIRECT = 'http://127.0.0.1:43821/callback';
+  async function copyLog() {
+    try {
+      const log = await call<string>('read_log');
+      await navigator.clipboard.writeText(log || '(log is empty)');
+      ui.toast('Log copied to clipboard');
+    } catch (e) {
+      ui.error(e);
+    }
+  }
   let spMe = $state.raw<SpUser | null>(null);
   $effect(() => {
     spotify.version;
@@ -357,6 +367,10 @@
     <div class="set-row">
       <div class="l"><div class="t">SpotiTube</div><div class="d">A lightweight native YouTube Music client. Not affiliated with Google, YouTube or Spotify.</div></div>
       <Icon name="info" size={20} />
+    </div>
+    <div class="set-row">
+      <div class="l"><div class="t">Diagnostics</div><div class="d">If SpotiTube crashed or something broke, copy the log and paste it in your report. It contains errors only, no passwords or cookies.</div></div>
+      <button class="pill-btn outline" onclick={copyLog}>Copy log</button>
     </div>
   </div>
 </div>
