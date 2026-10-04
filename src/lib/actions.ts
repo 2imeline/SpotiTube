@@ -79,9 +79,9 @@ export async function playCard(c: Card, shuffle = false) {
         return player.playTracks(a.tracks, 0, source, { shuffle });
       }
       case 'playlist': {
-        const id = c.playlistId ?? c.browseId?.replace(/^VL/, '');
+        const id = c.browseId?.replace(/^VL/, '') ?? c.playlistId;
         if (!id) return;
-        return player.playWatch({ playlistId: id, shuffle }, source);
+        return playPlaylist(id, shuffle, source);
       }
       case 'station':
         return player.playWatch({ playlistId: c.playlistId, params: c.params, shuffle }, source);
@@ -105,6 +105,18 @@ export async function playCard(c: Card, shuffle = false) {
     }
   } catch (e) {
     ui.error(e);
+  }
+}
+
+/** Play a whole playlist (all pages are queued, shuffle covers everything). */
+export async function playPlaylist(id: string, shuffle: boolean, source: { title: string; path?: string }) {
+  try {
+    const p = await getPlaylist(id);
+    if (!p.tracks.length) return player.playWatch({ playlistId: id, shuffle }, source);
+    player.playTracks(p.tracks, 0, source, { shuffle, more: p.more });
+  } catch {
+    // some auto-generated lists (mixes) can't be browsed: let YouTube Music build the queue
+    return player.playWatch({ playlistId: id, shuffle }, source);
   }
 }
 
@@ -366,4 +378,28 @@ export async function showCredits(id: string, title: string) {
 
 export function itemMenu(i: Item, e: MouseEvent, ctx?: TrackMenuContext) {
   ui.openMenu(e, i.kind === 'track' ? trackMenu(i, ctx) : cardMenu(i));
+}
+
+/** Avatar / account menu (shared by both themes). */
+export function openAccountMenu(e: MouseEvent) {
+  const actions: MenuAction[] = [];
+  if (auth.loggedIn) {
+    actions.push({ label: auth.account?.name ?? 'Account', icon: 'user', disabled: true });
+    actions.push({
+      label: 'Switch account',
+      icon: 'user',
+      submenu: async () => {
+        await auth.loadAccounts();
+        if (!auth.accounts.length) return [{ label: 'No other accounts', disabled: true }];
+        return auth.accounts.map((a) => ({ label: (a.selected ? '✓ ' : '') + a.name + (a.handle ? ` (${a.handle})` : ''), run: () => auth.switchAccount(a) }));
+      },
+    });
+    actions.push({ label: '', divider: true });
+  }
+  actions.push({ label: 'Settings', icon: 'settings', run: () => go('/settings') });
+  actions.push({ label: 'Listening history', icon: 'history', run: () => go('/history') });
+  actions.push({ label: '', divider: true });
+  if (auth.loggedIn) actions.push({ label: 'Log out', icon: 'logout', run: () => auth.logout() });
+  else actions.push({ label: 'Sign in with Google', icon: 'user', run: () => auth.login() });
+  ui.openMenu(e, actions);
 }

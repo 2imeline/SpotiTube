@@ -63,11 +63,15 @@
   const saved = $derived(library.isSaved(id, data?.header.saved));
   const shown = $derived(filter ? tracks.filter((t) => (t.title + ' ' + t.artists.map((a) => a.name).join(' ') + ' ' + (t.album?.name ?? '')).toLowerCase().includes(filter.toLowerCase())) : tracks);
 
+  /** Spotify-style shuffle toggle: reflects the player's shuffle state */
+  function shuffleClick() {
+    if (isCurrent || player.shuffle) player.toggleShuffle();
+    else play(true);
+  }
   async function play(shuffle = false) {
     if (isCurrent && !shuffle) return player.toggle();
-    // full list for small playlists; otherwise let YouTube Music stream the queue
-    if (!more || tracks.length >= 200) player.playTracks(tracks, 0, { title: data!.header.title, path }, { shuffle });
-    else player.playWatch({ playlistId: id, shuffle }, { title: data!.header.title, path });
+    // queue the whole playlist: loaded tracks now, the rest in the background
+    player.playTracks(tracks, 0, { title: isLiked ? 'Liked Music' : data!.header.title, path }, { shuffle, more: filter ? undefined : more });
   }
 
   async function edit() {
@@ -177,7 +181,7 @@
     <div style="position:relative;background:linear-gradient(rgba(0,0,0,.6), var(--panel) 240px)">
       <div class="action-bar">
         <PlayButton size="lg" playing={isCurrent && player.playing} onclick={() => play()} />
-        <button class="icon-btn" aria-label="Shuffle play" title="Shuffle play" onclick={() => play(true)}><Icon name="shuffle" size={28} /></button>
+        <button class="icon-btn shuffle-btn" class:on={player.shuffle} aria-label={player.shuffle ? 'Disable shuffle' : 'Shuffle play'} title={player.shuffle ? 'Disable shuffle' : 'Shuffle play'} onclick={shuffleClick}><Icon name="shuffle" size={28} /></button>
         {#if !owned && !isLiked && id !== 'SE'}
           <button class="icon-btn" class:on={saved} aria-label={saved ? 'Remove from Your Library' : 'Save to Your Library'} title={saved ? 'Remove from Your Library' : 'Save to Your Library'} onclick={() => library.setSaved(id, !saved)}>
             <Icon name={saved ? 'checkCircle' : 'addCircle'} size={28} />
@@ -191,7 +195,7 @@
         </div>
       </div>
       {#if tracks.length}
-        <TrackList tracks={shown} source={{ title: isLiked ? 'Liked Music' : h.title, path }} ctx={{ playlistId: owned ? id : undefined, onRemoved }} loadMore={more && !filter ? loadMore : undefined} onmove={owned && !filter && !isLiked ? moveTrack : undefined} />
+        <TrackList tracks={shown} source={{ title: isLiked ? 'Liked Music' : h.title, path }} ctx={{ playlistId: owned ? id : undefined, onRemoved }} loadMore={more && !filter ? loadMore : undefined} queueMore={filter ? undefined : more} onmove={owned && !filter && !isLiked ? moveTrack : undefined} />
       {:else}
         <div class="center-msg" style="min-height:20vh"><div>This playlist is empty. Find songs to add with search.</div><button class="pill-btn" onclick={() => go('/search')}>Find songs</button></div>
       {/if}

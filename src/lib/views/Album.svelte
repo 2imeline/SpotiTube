@@ -40,6 +40,11 @@
   const pid = $derived(data?.header.audioPlaylistId);
   const saved = $derived(pid ? library.isSaved(pid, data?.header.saved) : false);
   const totalSec = $derived(data?.tracks.reduce((a, t) => a + (t.durationSec ?? 0), 0) ?? 0);
+  /** Spotify-style shuffle toggle: reflects the player's shuffle state */
+  function shuffleClick() {
+    if (isCurrent || player.shuffle) player.toggleShuffle();
+    else play(true);
+  }
   function play(shuffle = false) {
     if (isCurrent && !shuffle) return player.toggle();
     player.playTracks(data!.tracks, 0, { title: data!.header.title, path }, { shuffle });
@@ -74,7 +79,7 @@
     <div style="position:relative;background:linear-gradient(rgba(0,0,0,.6), var(--panel) 240px)">
       <div class="action-bar">
         <PlayButton size="lg" playing={isCurrent && player.playing} onclick={() => play()} />
-        <button class="icon-btn" aria-label="Shuffle play" title="Shuffle play" onclick={() => play(true)}><Icon name="shuffle" size={28} /></button>
+        <button class="icon-btn shuffle-btn" class:on={player.shuffle} aria-label={player.shuffle ? 'Disable shuffle' : 'Shuffle play'} title={player.shuffle ? 'Disable shuffle' : 'Shuffle play'} onclick={shuffleClick}><Icon name="shuffle" size={28} /></button>
         {#if pid}
           <button class="icon-btn" class:on={saved} aria-label={saved ? 'Remove from Your Library' : 'Save to Your Library'} title={saved ? 'Remove from Your Library' : 'Save to Your Library'} onclick={() => library.setSaved(pid!, !saved)}>
             <Icon name={saved ? 'checkCircle' : 'addCircle'} size={28} />

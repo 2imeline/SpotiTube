@@ -8,6 +8,8 @@
   import Img from '../components/Img.svelte';
   import { auth } from '../stores/auth.svelte';
   import { settings } from '../stores/settings.svelte';
+  import { ui } from '../stores/ui.svelte';
+  import { router } from '../stores/router.svelte';
 
   let { browseId, params, title: fixedTitle, kind = 'browse' }: { browseId: string; params?: string; title?: string; kind?: 'browse' | 'charts' } = $props();
   let page = $state.raw<BrowsePage | null>(null);
@@ -57,6 +59,9 @@
   });
 
   const title = $derived(fixedTitle ?? page?.header?.title ?? '');
+  $effect(() => {
+    if (title) ui.page = { path: router.route.path, title };
+  });
   const regionName = (c: string) => {
     if (c === 'ZZ') return 'Global';
     try {

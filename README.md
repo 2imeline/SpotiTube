@@ -44,7 +44,7 @@ Windows 10/11. Uses the Microsoft Edge WebView2 runtime that ships with Windows.
 
 **Themes**
 - **Spotify** (default) — a faithful clone of the Spotify desktop UI
-- **Frutiger Aero** — Windows 7 glass, glossy orb buttons, three wallpapers (Aurora, Bliss-style sky, Aqua bubbles)
+- **Frutiger Aero** — its own Windows Media Player 12-style layout: Aero glass caption with an Explorer breadcrumb bar, navigation tree, Now Playing list pane, and the glossy orb transport strip; three wallpapers (Aurora, Bliss-style sky, Aqua bubbles)
 - **Global accent color** with a color wheel — both themes follow it (want red instead of Spotify green? one click)
 
 ## Keyboard shortcuts

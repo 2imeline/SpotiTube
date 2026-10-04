@@ -9,7 +9,7 @@
   import { player } from '../player/player.svelte';
   import { library } from '../stores/library.svelte';
   import { ui } from '../stores/ui.svelte';
-  import { go } from '../stores/router.svelte';
+  import { go, router } from '../stores/router.svelte';
   import { auth } from '../stores/auth.svelte';
   import { bestThumb } from '../util/thumbs';
   import { dominantColor } from '../util/color';
@@ -28,6 +28,7 @@
     showAll = false;
     try {
       data = await getArtist(id);
+      ui.page = { path: router.route.path, title: data.header.title };
       dominantColor(bestThumb(data.header.thumbnails, 60)).then((c) => (color = c));
     } catch (e: any) {
       error = e?.message ?? String(e);
@@ -44,6 +45,11 @@
   const channelId = $derived(data?.header.channelId ?? (id.startsWith('UC') ? id : undefined));
   const subscribed = $derived(channelId ? library.isSubscribed(channelId, data?.header.subscribed) : false);
 
+  /** Spotify-style shuffle toggle: reflects the player's shuffle state */
+  function shuffleClick() {
+    if (isCurrent || player.shuffle) player.toggleShuffle();
+    else play(true);
+  }
   function play(shuffle = false) {
     if (isCurrent && !shuffle) return player.toggle();
     const h = data!.header;
@@ -81,7 +87,7 @@
     <div style="position:relative;background:linear-gradient({color ?? '#333'} -60%, var(--panel) 240px)">
       <div class="action-bar">
         <PlayButton size="lg" playing={isCurrent && player.playing} onclick={() => play()} />
-        <button class="icon-btn" aria-label="Shuffle play" title="Shuffle play" onclick={() => play(true)}><Icon name="shuffle" size={28} /></button>
+        <button class="icon-btn shuffle-btn" class:on={player.shuffle} aria-label={player.shuffle ? 'Disable shuffle' : 'Shuffle play'} title={player.shuffle ? 'Disable shuffle' : 'Shuffle play'} onclick={shuffleClick}><Icon name="shuffle" size={28} /></button>
         {#if channelId}
           <button class="pill-btn outline" onclick={() => library.setSubscribed(channelId!, !subscribed)}>{subscribed ? 'Subscribed' : 'Subscribe'}</button>
         {/if}

@@ -840,3 +840,107 @@
 [data-theme='aero'] .chips[style*='sticky'] {
   background: rgba(240, 247, 255, 0.92) !important;
 }
+
+/* ---------------- Aero shell: Explorer-style search field */
+[data-theme='aero'] .searchbox.aero {
+  height: 26px;
+  border-radius: 2px;
+  padding: 0 0 0 8px;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(40, 70, 110, 0.6);
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(255, 255, 255, 0.5);
+}
+[data-theme='aero'] .searchbox.aero:focus-within {
+  border-color: var(--accent-dark);
+  box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.3);
+}
+[data-theme='aero'] .searchbox.aero input {
+  font-size: 12.5px;
+}
+[data-theme='aero'] .searchbox.aero .icon-btn {
+  width: 20px !important;
+  height: 20px !important;
+}
+[data-theme='aero'] .search-go {
+  width: 26px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  color: #2e4f73;
+  border-left: 1px solid #c0d0e2;
+}
+[data-theme='aero'] .search-go:hover {
+  background: linear-gradient(#f2faff, #cde8fb);
+}
+[data-theme='aero'] .searchbox.aero .suggest {
+  top: 30px;
+  left: auto;
+  width: 380px;
+}
+/* content area inside the Aero shell is a white "library view" */
+[data-theme='aero'] .aero-content .view-bg {
+  opacity: 0.18 !important;
+}
+
+/* WMP-style compact "details" headers instead of Spotify heroes */
+[data-theme='aero'] .aero-content .ent-header {
+  min-height: 0;
+  padding: 28px 28px 22px;
+  gap: 22px;
+  align-items: center;
+  border-bottom: 1px solid #d5e2ef;
+  background: linear-gradient(#ffffff, #eef5fc);
+}
+[data-theme='aero'] .aero-content .ent-cover {
+  width: 150px;
+  -webkit-box-reflect: none;
+}
+[data-theme='aero'] .aero-content .ent-title {
+  font-size: clamp(24px, 2.6vw, 36px);
+  margin: 2px 0 4px;
+  text-shadow: none;
+}
+[data-theme='aero'] .aero-content .view-bg {
+  display: none;
+}
+[data-theme='aero'] .aero-content .action-bar {
+  padding: 12px 28px;
+  gap: 14px;
+  background: linear-gradient(#f7fafd, #e8f0f8);
+  border-bottom: 1px solid #d5e2ef;
+  margin-bottom: 10px;
+}
+[data-theme='aero'] .aero-content .action-bar .play-btn.lg {
+  width: 40px;
+  height: 40px;
+}
+[data-theme='aero'] .aero-content .action-bar .icon-btn :is(svg) {
+  width: 20px;
+  height: 20px;
+}
+[data-theme='aero'] .aero-content .artist-hero {
+  height: 220px;
+}
+[data-theme='aero'] .aero-content .artist-hero .ent-title {
+  font-size: clamp(30px, 4vw, 52px) !important;
+  font-weight: 300;
+}
+[data-theme='aero'] .aero-content .sticky-head {
+  height: 44px;
+  margin-bottom: -44px;
+}
+[data-theme='aero'] .aero-content .sticky-head .st-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+[data-theme='aero'] .aero-content .sticky-head .play-btn {
+  width: 30px;
+  height: 30px;
+}
+[data-theme='aero'] .aero-content .tl-head {
+  top: 44px;
+}
+[data-theme='aero'] .aero-content .greeting {
+  font-size: 26px;
+}

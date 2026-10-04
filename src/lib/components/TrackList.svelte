@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Track } from '../api/types';
+  import type { Paged, Track } from '../api/types';
   import TrackRow from './TrackRow.svelte';
   import Icon from './Icon.svelte';
   import { player, type QueueSource } from '../player/player.svelte';
@@ -19,6 +19,7 @@
     onplay,
     loadMore,
     onmove,
+    queueMore,
   }: {
     tracks: Track[];
     source?: QueueSource;
@@ -33,6 +34,8 @@
     loadMore?: () => Promise<void>;
     /** enables drag & drop reordering */
     onmove?: (from: number, to: number) => void;
+    /** loads the tracks of this list that aren't rendered yet (queued in the background on play) */
+    queueMore?: () => Promise<Paged<Track>>;
   } = $props();
   let dragFrom = $state<number | null>(null);
   let dragOver = $state<number | null>(null);
@@ -49,7 +52,7 @@
 
   function play(i: number) {
     if (onplay) onplay(i);
-    else player.playTracks(tracks, i, source);
+    else player.playTracks(tracks, i, source, { more: queueMore });
   }
 
   function isCurrent(t: Track) {

@@ -65,6 +65,7 @@ class Player {
   private gain = 1;
   private restoring = false;
   private extending = false;
+  private sourceToken = 0;
   private sleepTimer?: ReturnType<typeof setTimeout>;
   private prefetched = '';
 
@@ -273,7 +274,11 @@ class Player {
       if (!settings.autoplay || this.repeat === 'all') return false;
       const last = this.queue[this.queue.length - 1];
       if (!last || this.index < this.queue.length - 2) return false;
-      const r = await getWatchQueue({ videoId: last.videoId, radio: true });
+      // seed autoplay from the whole playlist (more varied) when possible, else from the last song
+      const pl = this.source?.path?.match(/^\/playlist\/([^/?]+)/)?.[1];
+      const r = pl && pl !== 'LM' && pl !== 'SE'
+        ? await getWatchQueue({ playlistId: 'RDAMPL' + pl, radio: true }).catch(() => getWatchQueue({ videoId: last.videoId, radio: true }))
+        : await getWatchQueue({ videoId: last.videoId, radio: true });
       this.cont = r.continuation;
       const have = new Set(this.queue.map((t) => t.videoId));
       const add = r.tracks.filter((t) => !have.has(t.videoId)).map(tag);
@@ -292,10 +297,16 @@ class Player {
   // ------------------------------------------------------------ public API
 
   /** Play a fixed list (album, playlist, liked songs...). */
-  playTracks(tracks: Track[], start = 0, source?: QueueSource, opts: { shuffle?: boolean } = {}) {
+  /**
+   * Play a fixed list (album, playlist, liked songs...).
+   * `more` loads the rest of a long list in the background, so shuffle covers
+   * the *whole* playlist instead of the first page.
+   */
+  playTracks(tracks: Track[], start = 0, source?: QueueSource, opts: { shuffle?: boolean; more?: () => Promise<Paged<Track>> } = {}) {
     const list = tracks.filter((t) => t.videoId && t.isAvailable !== false);
     if (!list.length) return;
-    let startTrack = tracks[start];
+    const token = ++this.sourceToken;
+    const startTrack = tracks[start];
     let startIdx = Math.max(0, list.indexOf(startTrack));
     let q = list.map(tag);
     this.unshuffled = null;
@@ -311,10 +322,46 @@ class Player {
     this.source = source ?? null;
     this.failed = [];
     this.load(startIdx);
+    if (opts.more) this.loadRest(opts.more, token);
+  }
+
+  /** Background-load the remaining pages of the current source list. */
+  private async loadRest(more: () => Promise<Paged<Track>>, token: number) {
+    let next: (() => Promise<Paged<Track>>) | undefined = more;
+    let total = this.queue.length;
+    while (next && token === this.sourceToken && total < 5000) {
+      try {
+        const page: Paged<Track> = await next();
+        if (token !== this.sourceToken) return;
+        next = page.continuation;
+        const add = page.items.filter((t) => t.videoId && t.isAvailable !== false).map(tag);
+        total += add.length;
+        if (add.length) this.appendSource(add);
+      } catch {
+        return;
+      }
+    }
+  }
+
+  /** Add tracks that belong to the current source (keeps shuffle order random). */
+  private appendSource(add: Track[]) {
+    if (this.unshuffled) this.unshuffled = [...this.unshuffled, ...add];
+    if (!this.shuffle) {
+      this.queue = [...this.queue, ...add];
+      return;
+    }
+    const q = [...this.queue];
+    for (const t of add) {
+      const lo = this.index + 1;
+      const pos = lo + Math.floor(Math.random() * (q.length - lo + 1));
+      q.splice(pos, 0, t);
+    }
+    this.queue = q;
   }
 
   /** Start a watch playlist (radio, mix, playlist by id) like YouTube Music does. */
   async playWatch(o: WatchOptions, source?: QueueSource) {
+    this.sourceToken++;
     this.loading = true;
     try {
       const r = await getWatchQueue(o);
@@ -336,6 +383,7 @@ class Player {
 
   /** Play a single song: starts instantly, then fills "up next" with its radio. */
   async playTrack(t: Track, source?: QueueSource) {
+    this.sourceToken++;
     this.queue = [tag(t)];
     this.unshuffled = null;
     this.shuffle = false;
@@ -395,9 +443,9 @@ class Player {
     const q = [...this.queue];
     const [it] = q.splice(from, 1);
     q.splice(to, 0, it);
-    const cur = this.current;
+    const curQid = this.current?.qid;
     this.queue = q;
-    if (cur) this.index = q.indexOf(cur);
+    this.index = Math.max(0, q.findIndex((t) => t.qid === curQid));
   }
 
   clearUpcoming() {
@@ -468,12 +516,13 @@ class Player {
     if (this.shuffle) {
       this.shuffle = false;
       if (this.unshuffled) {
-        const cur = this.current;
+        const curQid = this.current?.qid;
         const present = new Set(this.queue.map((t) => t.qid));
         const restored = this.unshuffled.filter((t) => present.has(t.qid));
-        const extra = this.queue.filter((t) => !restored.includes(t));
+        const restoredIds = new Set(restored.map((t) => t.qid));
+        const extra = this.queue.filter((t) => !restoredIds.has(t.qid));
         this.queue = [...restored, ...extra];
-        if (cur) this.index = this.queue.indexOf(cur);
+        this.index = Math.max(0, this.queue.findIndex((t) => t.qid === curQid));
       }
       this.unshuffled = null;
     } else {

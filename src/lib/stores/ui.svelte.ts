@@ -42,6 +42,8 @@ class UI {
   fullscreenPlayer = $state(false);
   miniPlayer = $state(false);
   scrollY = $state(0);
+  /** title of the page currently shown (used by the Aero breadcrumb) */
+  page = $state<{ path: string; title: string } | null>(null);
   private n = 0;
 
   toast(text: string, kind: Toast['kind'] = 'info', ms = 3200) {

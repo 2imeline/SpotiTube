@@ -1012,6 +1012,18 @@ img {
 }
 .action-bar .icon-btn.on {
   color: var(--accent);
+  position: relative;
+}
+.action-bar .shuffle-btn.on::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  margin-left: -2px;
+  border-radius: 50%;
+  background: currentColor;
 }
 .action-bar .spacer {
   flex: 1;

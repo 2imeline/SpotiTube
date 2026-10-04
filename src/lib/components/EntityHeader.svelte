@@ -4,6 +4,8 @@
   import Img from './Img.svelte';
   import { dominantColor } from '../util/color';
   import { bestThumb } from '../util/thumbs';
+  import { ui } from '../stores/ui.svelte';
+  import { router } from '../stores/router.svelte';
 
   let {
     type,
@@ -16,6 +18,9 @@
     cover,
   }: { type?: string; title: string; thumbs?: Thumb[]; round?: boolean; description?: string; color?: string | null; meta?: Snippet; cover?: Snippet } = $props();
 
+  $effect(() => {
+    ui.page = { path: router.route.path, title };
+  });
   $effect(() => {
     const u = bestThumb(thumbs, 60);
     dominantColor(u).then((c) => (color = c ?? 'rgb(83,83,83)'));

@@ -11,6 +11,7 @@
   import FullscreenPlayer from './lib/components/FullscreenPlayer.svelte';
   import MiniPlayer from './lib/components/MiniPlayer.svelte';
   import AeroBackdrop from './lib/components/AeroBackdrop.svelte';
+  import AeroShell from './lib/aero/AeroShell.svelte';
   import { ui } from './lib/stores/ui.svelte';
   import { router, go } from './lib/stores/router.svelte';
   import { settings } from './lib/stores/settings.svelte';
@@ -103,6 +104,8 @@
 
 {#if ui.miniPlayer}
   <div class="app mini"><MiniPlayer /></div>
+{:else if settings.theme === 'aero'}
+  <AeroShell />
 {:else}
   <div
     class="app"
