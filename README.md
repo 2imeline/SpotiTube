@@ -42,12 +42,16 @@ Windows 10/11. Uses the Microsoft Edge WebView2 runtime that ships with Windows.
 - Windows media controls (SMTC) + keyboard media keys, keyboard shortcuts
 - Remembers your queue and position between launches
 
+**Discord**
+- Rich presence: "Listening to …" with song, artist, album art, a live progress bar and a "Play on YouTube Music" button; choose whether the status shows the app name, artist or song; optional custom Discord application ID
+
 **Updates**
 - Built-in updater: checks GitHub Releases, shows an **Update** button when a new version exists, downloads it, verifies its SHA-256 and installs it in place (installer, MSI or portable exe), then reopens SpotiTube
 
 **Themes**
 - **Spotify** (default) — a faithful clone of the Spotify desktop UI
 - **Frutiger Aero** — its own Windows Media Player 12-style layout: Aero glass caption with an Explorer breadcrumb bar, navigation tree, Now Playing list pane, and the glossy orb transport strip; three wallpapers (Aurora, Bliss-style sky, Aqua bubbles)
+- **Apple Music** — the macOS Music / Apple Music for Windows layout: translucent sidebar with search, LCD now-playing display in the toolbar, Playing Next / History and full lyrics panels, red Play/Shuffle buttons; light, dark or automatic appearance
 - **Global accent color** with a color wheel — both themes follow it (want red instead of Spotify green? one click)
 
 ## Keyboard shortcuts

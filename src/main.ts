@@ -1,11 +1,14 @@
 import './styles/app.css';
 import './styles/aero.css';
+import './styles/apple.css';
 import { mount } from 'svelte';
 import App from './App.svelte';
 import { applySettings, saveSettings } from './lib/stores/settings.svelte';
 
 applySettings();
 saveSettings();
+// Apple theme 'Automatic' appearance follows Windows light/dark mode live
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => applySettings());
 
 const app = mount(App, { target: document.getElementById('app')! });
 

@@ -5,6 +5,7 @@
 //! Google session (cookies + SAPISIDHASH). Media is streamed through a small
 //! local proxy (see `proxy.rs`).
 
+mod discord;
 mod proxy;
 mod updater;
 
@@ -54,6 +55,7 @@ struct AppState {
     auth: Arc<RwLock<AuthData>>,
     auth_path: PathBuf,
     proxy: proxy::ProxyInfo,
+    discord: discord::Discord,
 }
 
 impl AppState {
@@ -413,6 +415,16 @@ fn open_external(url: String) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+fn discord_configure(state: State<'_, AppState>, enabled: bool, client_id: Option<String>) {
+    state.discord.send(discord::Msg::Configure { enabled, client_id: client_id.unwrap_or_default() });
+}
+
+#[tauri::command]
+fn discord_set_activity(state: State<'_, AppState>, activity: Option<serde_json::Value>) {
+    state.discord.send(discord::Msg::Activity(activity));
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     use tauri_plugin_global_shortcut::{Code, ShortcutState};
@@ -462,6 +474,7 @@ pub fn run() {
                 auth: Arc::new(RwLock::new(auth)),
                 auth_path,
                 proxy: proxy::start(),
+                discord: discord::Discord::start(),
             });
             Ok(())
         })
@@ -476,6 +489,8 @@ pub fn run() {
             upload_song,
             set_media_keys,
             open_external,
+            discord_configure,
+            discord_set_activity,
             updater::check_update,
             updater::install_update,
         ])

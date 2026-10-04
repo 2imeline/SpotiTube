@@ -7,7 +7,7 @@
   import { artistNames } from '../util/thumbs';
   import type { Item } from '../api/types';
 
-  let { placeholder = 'What do you want to play?', variant = 'spotify' }: { placeholder?: string; variant?: 'spotify' | 'aero' } = $props();
+  let { placeholder = 'What do you want to play?', variant = 'spotify' }: { placeholder?: string; variant?: 'spotify' | 'aero' | 'apple' } = $props();
 
   let q = $state('');
   let focused = $state(false);
@@ -81,7 +81,7 @@
 </script>
 
 <div class="searchbox {variant}" style="position:relative">
-  {#if variant !== 'aero'}<Icon name="search" size={24} />{/if}
+  {#if variant === 'apple'}<Icon name="search" size={13} />{:else if variant !== 'aero'}<Icon name="search" size={24} />{/if}
   <input
     bind:this={input}
     bind:value={q}
@@ -101,7 +101,7 @@
   {/if}
   {#if variant === 'aero'}
     <button class="search-go" aria-label="Search" onclick={() => submit()}><Icon name="search" size={16} /></button>
-  {:else}
+  {:else if variant === 'spotify'}
     <span class="divider"></span>
     <button class="icon-btn" style="width:28px;height:28px" title="Browse" aria-label="Browse" onclick={() => go('/explore')}><Icon name="explore" size={22} /></button>
   {/if}

@@ -51,6 +51,7 @@
   const themes: { id: Theme; name: string; desc: string }[] = [
     { id: 'spotify', name: 'Spotify', desc: 'Dark, modern, familiar' },
     { id: 'aero', name: 'Frutiger Aero', desc: 'Glossy Windows 7 glass, sky & bubbles' },
+    { id: 'apple', name: 'Apple Music', desc: 'Clean, light or dark, like the Music app' },
   ];
 </script>
 
@@ -101,7 +102,18 @@
       {#each themes as t}
         <button class="theme-card" class:on={settings.theme === t.id} onclick={() => set('theme', t.id)}>
           <div class="preview {t.id}-preview">
-            {#if t.id === 'spotify'}
+            {#if t.id === 'apple'}
+              <div style="position:absolute;inset:0;background:#fff;display:grid;grid-template-columns:28% 1fr;border:1px solid #ddd">
+                <div style="background:#f2f2f4;border-right:1px solid #e3e3e3;padding:8px 6px;display:flex;flex-direction:column;gap:5px">
+                  <div style="height:8px;border-radius:3px;background:#e2e2e5"></div>
+                  {#each [1, 2, 3] as _}<div style="height:5px;width:70%;border-radius:2px;background:var(--accent);opacity:.75"></div>{/each}
+                </div>
+                <div style="padding:8px">
+                  <div style="height:12px;border-radius:3px;background:#efeff1;margin:0 18% 10px"></div>
+                  <div style="display:flex;gap:8px"><div style="width:42px;height:42px;border-radius:4px;background:linear-gradient(135deg,#ff9a8b,#ff6a88)"></div><div style="flex:1"><div style="height:6px;width:60%;background:#1d1d1f;border-radius:2px;margin:6px 0 4px"></div><div style="height:6px;width:40%;background:var(--accent);border-radius:2px"></div><div style="display:flex;gap:4px;margin-top:8px"><div style="width:24px;height:9px;border-radius:2px;background:var(--accent)"></div><div style="width:24px;height:9px;border-radius:2px;background:var(--accent)"></div></div></div></div>
+                </div>
+              </div>
+            {:else if t.id === 'spotify'}
               <div style="position:absolute;inset:0;background:#000;padding:6px;display:grid;grid-template-columns:30% 1fr;gap:4px">
                 <div style="background:#121212;border-radius:4px"></div>
                 <div style="background:linear-gradient(#3a3a3a,#121212 70%);border-radius:4px;position:relative"><div style="position:absolute;right:8px;bottom:8px;width:22px;height:22px;border-radius:50%;background:var(--accent)"></div></div>
@@ -118,6 +130,16 @@
         </button>
       {/each}
     </div>
+    {#if settings.theme === 'apple'}
+      <div class="set-row">
+        <div class="l"><div class="t">Appearance</div><div class="d">Automatic follows Windows' light/dark mode.</div></div>
+        <select class="input" value={settings.appleAppearance} onchange={(e) => set('appleAppearance', (e.currentTarget as HTMLSelectElement).value as any)}>
+          <option value="auto">Automatic</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </div>
+    {/if}
     {#if settings.theme === 'aero'}
       <div class="set-row">
         <div class="l"><div class="t">Aero wallpaper</div><div class="d">Background scene behind the glass.</div></div>
@@ -178,6 +200,34 @@
       <div class="l"><div class="t">Synced lyrics from LRCLIB</div><div class="d">When YouTube Music has no time-synced lyrics, look them up on lrclib.net.</div></div>
       <button class="toggle" class:on={settings.lrclib} aria-label="LRCLIB" onclick={() => set('lrclib', !settings.lrclib)}></button>
     </div>
+
+    <h2>Discord</h2>
+    <div class="set-row">
+      <div class="l"><div class="t">Show what I'm listening to on Discord</div><div class="d">Rich presence with the song, artist, artwork and a live progress bar. The Discord desktop app must be running.</div></div>
+      <button class="toggle" class:on={settings.discord} aria-label="Discord rich presence" onclick={() => set('discord', !settings.discord)}></button>
+    </div>
+    {#if settings.discord}
+      <div class="set-row">
+        <div class="l"><div class="t">Status text</div><div class="d">What your status line says next to "Listening to".</div></div>
+        <select class="input" value={settings.discordShow} onchange={(e) => set('discordShow', (e.currentTarget as HTMLSelectElement).value as any)}>
+          <option value="app">App name (Listening to YouTube Music)</option>
+          <option value="artist">Artist (Listening to Radiohead)</option>
+          <option value="title">Song (Listening to All I Need)</option>
+        </select>
+      </div>
+      <div class="set-row">
+        <div class="l"><div class="t">Show while paused</div><div class="d">Keep the status visible (without a progress bar) when playback is paused.</div></div>
+        <button class="toggle" class:on={settings.discordWhenPaused} aria-label="Show while paused" onclick={() => set('discordWhenPaused', !settings.discordWhenPaused)}></button>
+      </div>
+      <div class="set-row">
+        <div class="l"><div class="t">"Play on YouTube Music" button</div><div class="d">Lets friends open the song you're playing.</div></div>
+        <button class="toggle" class:on={settings.discordButton} aria-label="Play button" onclick={() => set('discordButton', !settings.discordButton)}></button>
+      </div>
+      <div class="set-row">
+        <div class="l"><div class="t">Custom Discord application ID</div><div class="d">Optional. The app's name is what shows after "Listening to" — create an application called e.g. "SpotiTube" at discord.com/developers and paste its Application ID here. Leave empty for "YouTube Music".</div></div>
+        <input class="input" style="width:200px" placeholder="Application ID" value={settings.discordClientId} onchange={(e) => set('discordClientId', (e.currentTarget as HTMLInputElement).value.trim())} />
+      </div>
+    {/if}
 
     <h2>Language and region</h2>
     <div class="set-row">

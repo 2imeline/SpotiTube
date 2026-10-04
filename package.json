@@ -1,7 +1,7 @@
 {
   "name": "spotitube",
   "private": true,
-  "version": "1.2.0",
+  "version": "1.3.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@fontsource-variable/figtree": "^5.3.0",
+    "@fontsource-variable/inter": "^5.3.0",
     "@tauri-apps/api": "^2.12.1",
     "astring": "1.9.0",
     "meriyah": "6.1.4"

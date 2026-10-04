@@ -2,7 +2,7 @@ import { apiConfig, clearApiCache } from '../api/innertube';
 import { streamPrefs } from '../player/streams';
 import { call, isTauri } from '../api/transport';
 
-export type Theme = 'spotify' | 'aero';
+export type Theme = 'spotify' | 'aero' | 'apple';
 
 export interface Settings {
   theme: Theme;
@@ -22,6 +22,12 @@ export interface Settings {
   closeToMini: boolean;
   aeroWallpaper: 'aurora' | 'sky' | 'bubbles';
   autoUpdate: boolean;
+  appleAppearance: 'auto' | 'light' | 'dark';
+  discord: boolean;
+  discordShow: 'app' | 'artist' | 'title';
+  discordWhenPaused: boolean;
+  discordButton: boolean;
+  discordClientId: string;
 }
 
 const DEFAULTS: Settings = {
@@ -42,6 +48,12 @@ const DEFAULTS: Settings = {
   closeToMini: false,
   aeroWallpaper: 'aurora',
   autoUpdate: true,
+  appleAppearance: 'auto',
+  discord: true,
+  discordShow: 'app',
+  discordWhenPaused: false,
+  discordButton: true,
+  discordClientId: '',
 };
 
 const KEY = 'st.settings';
@@ -102,6 +114,8 @@ function luminance(hex: string) {
 export function applySettings() {
   const root = document.documentElement;
   root.dataset.theme = settings.theme;
+  const sysDark = typeof matchMedia !== 'undefined' && matchMedia('(prefers-color-scheme: dark)').matches;
+  root.classList.toggle('apple-dark', settings.theme === 'apple' && (settings.appleAppearance === 'dark' || (settings.appleAppearance === 'auto' && sysDark)));
   const a = settings.accent;
   const [r, g, b] = hexToRgb(a);
   root.style.setProperty('--accent', a);

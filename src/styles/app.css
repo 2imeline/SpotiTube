@@ -48,6 +48,7 @@ body {
   margin: 0;
   height: 100%;
   overflow: hidden;
+  overflow: clip;
   background: var(--bg);
   color: var(--text);
   font-family: var(--font);

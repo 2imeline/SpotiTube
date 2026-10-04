@@ -51,6 +51,8 @@ class Player {
   tabs = $state<{ videoId: string; lyricsId?: string; relatedId?: string } | null>(null);
   sleepAt = $state<number | null>(null);
   sleepEndOfTrack = $state(false);
+  /** bumps on every user seek (for Discord timestamps) */
+  seekCount = $state(0);
 
   el!: HTMLVideoElement;
   private cont?: () => Promise<Paged<Track>>;
@@ -488,6 +490,7 @@ class Player {
     }
     this.el.currentTime = Math.max(0, t);
     this.time = this.el.currentTime;
+    this.seekCount++;
     this.updatePosition();
   }
 

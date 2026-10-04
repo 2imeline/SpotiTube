@@ -12,6 +12,7 @@
   import MiniPlayer from './lib/components/MiniPlayer.svelte';
   import AeroBackdrop from './lib/components/AeroBackdrop.svelte';
   import AeroShell from './lib/aero/AeroShell.svelte';
+  import AppleShell from './lib/apple/AppleShell.svelte';
   import { ui } from './lib/stores/ui.svelte';
   import { router, go } from './lib/stores/router.svelte';
   import { settings } from './lib/stores/settings.svelte';
@@ -19,6 +20,7 @@
   import { library } from './lib/stores/library.svelte';
   import { player } from './lib/player/player.svelte';
   import { updater } from './lib/stores/updater.svelte';
+  import { initDiscord } from './lib/player/discord.svelte';
 
   let sidebarW = $state(+(localStorage.getItem('st.sidebarW') ?? 300) || 300);
   let rightW = $state(+(localStorage.getItem('st.rightW') ?? 320) || 320);
@@ -28,6 +30,7 @@
     player.init();
     auth.init().then(() => library.refresh());
     updater.init(settings.autoUpdate);
+    initDiscord();
   });
 
   // refresh library when the account changes
@@ -108,6 +111,8 @@
   <div class="app mini"><MiniPlayer /></div>
 {:else if settings.theme === 'aero'}
   <AeroShell />
+{:else if settings.theme === 'apple'}
+  <AppleShell />
 {:else}
   <div
     class="app"
