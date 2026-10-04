@@ -28,6 +28,7 @@ export interface Settings {
   discordWhenPaused: boolean;
   discordButton: boolean;
   discordClientId: string;
+  miniMode: 'art' | 'vinyl';
 }
 
 const DEFAULTS: Settings = {
@@ -54,6 +55,7 @@ const DEFAULTS: Settings = {
   discordWhenPaused: false,
   discordButton: true,
   discordClientId: '',
+  miniMode: 'art',
 };
 
 const KEY = 'st.settings';

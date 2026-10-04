@@ -37,7 +37,7 @@ Windows 10/11. Uses the Microsoft Edge WebView2 runtime that ships with Windows.
 - Volume normalization (YouTube loudness data), audio quality selection, Premium mode
 
 **Player**
-- Spotify-style now-playing bar, queue, now-playing panel, lyrics panel, full-screen player, mini player (always-on-top)
+- Spotify-style now-playing bar, queue, now-playing panel, lyrics panel, full-screen player, mini player (always-on-top, YouTube-style auto-hiding controls, and a spinning **vinyl mode** that floats on your desktop)
 - Shuffle / repeat / repeat one, sleep timer, podcast playback speed
 - Windows media controls (SMTC) + keyboard media keys, keyboard shortcuts
 - Remembers your queue and position between launches

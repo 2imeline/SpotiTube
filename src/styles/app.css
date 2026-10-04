@@ -2380,3 +2380,11 @@ select.input option {
   background: var(--accent);
   color: var(--on-accent);
 }
+
+/* vinyl mini player floats on the desktop: see-through window */
+html.transparent-window,
+html.transparent-window body,
+html.transparent-window #app,
+html.transparent-window .app {
+  background: transparent !important;
+}
