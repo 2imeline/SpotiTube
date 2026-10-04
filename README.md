@@ -45,6 +45,13 @@ Windows 10/11. Uses the Microsoft Edge WebView2 runtime that ships with Windows.
 **Discord**
 - Rich presence: "Listening to …" with song, artist, album art, a live progress bar and a "Play on YouTube Music" button; choose whether the status shows the app name, artist or song; optional custom Discord application ID
 
+**Spotify**
+- Link your Spotify account (Settings → Spotify): your profile page (avatar menu → *Profile & friends*) shows your YouTube Music and Spotify accounts side by side, your Spotify playlists, and the people you follow; everything is labelled with where it comes from
+- Open any Spotify profile (from your friends, people you follow, or a pasted profile link) and browse its public playlists
+- Play any Spotify playlist: each song is matched to YouTube Music by title, artist and length as it comes up; **Copy to YouTube Music** turns a Spotify playlist into a YouTube Music playlist
+- **Friend activity** (experimental): see what your Spotify friends are listening to right now and play it. Spotify doesn't offer this to apps, so it uses a Spotify web player session; it can stop working if Spotify changes things
+- Linking uses your own free Spotify developer app: create one at developer.spotify.com/dashboard, add the redirect URI `http://127.0.0.1:43821/callback`, tick *Web API*, and paste its Client ID into Settings
+
 **Updates**
 - Built-in updater: checks GitHub Releases, shows an **Update** button when a new version exists, downloads it, verifies its SHA-256 and installs it in place (installer, MSI or portable exe), then reopens SpotiTube
 

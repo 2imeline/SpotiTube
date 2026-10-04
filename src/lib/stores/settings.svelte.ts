@@ -29,6 +29,11 @@ export interface Settings {
   discordButton: boolean;
   discordClientId: string;
   miniMode: 'art' | 'vinyl';
+  spotifyClientId: string;
+  /** experimental: friend activity etc. through the Spotify web player session */
+  spotifyFriends: boolean;
+  /** signed in to the Spotify web player */
+  spotifyWeb: boolean;
 }
 
 const DEFAULTS: Settings = {
@@ -56,6 +61,9 @@ const DEFAULTS: Settings = {
   discordButton: true,
   discordClientId: '',
   miniMode: 'art',
+  spotifyClientId: '',
+  spotifyFriends: false,
+  spotifyWeb: false,
 };
 
 const KEY = 'st.settings';

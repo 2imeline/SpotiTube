@@ -7,6 +7,25 @@
   import ColorWheel from '../components/ColorWheel.svelte';
   import Icon from '../components/Icon.svelte';
   import { updater } from '../stores/updater.svelte';
+  import { spotify } from '../stores/spotify.svelte';
+  import { go, router } from '../stores/router.svelte';
+  import { openExternal } from '../actions';
+  import type { SpUser } from '../api/spotify';
+  import { onMount } from 'svelte';
+
+  const REDIRECT = 'http://127.0.0.1:43821/callback';
+  let spMe = $state.raw<SpUser | null>(null);
+  $effect(() => {
+    spotify.version;
+    if (spotify.linked) spotify.loadMe().then((m) => (spMe = m), () => {});
+    else spMe = null;
+  });
+  onMount(() => {
+    // deep link: /settings?s=spotify
+    const s = router.route.query.get('s');
+    // after the main view has reset its scroll position
+    if (s) setTimeout(() => document.getElementById(`${s}-settings`)?.scrollIntoView({ block: 'start' }), 150);
+  });
 
   function set<K extends keyof typeof settings>(k: K, v: (typeof settings)[K]) {
     settings[k] = v;
@@ -226,6 +245,50 @@
       <div class="set-row">
         <div class="l"><div class="t">Custom Discord application ID</div><div class="d">Optional. The app's name is what shows after "Listening to" — create an application called e.g. "SpotiTube" at discord.com/developers and paste its Application ID here. Leave empty for "YouTube Music".</div></div>
         <input class="input" style="width:200px" placeholder="Application ID" value={settings.discordClientId} onchange={(e) => set('discordClientId', (e.currentTarget as HTMLInputElement).value.trim())} />
+      </div>
+    {/if}
+
+    <h2 id="spotify-settings">Spotify</h2>
+    {#if spotify.linked}
+      <div class="set-row">
+        <div class="l" style="display:flex;align-items:center;gap:12px">
+          {#if spMe?.image}<img src={spMe.image} alt="" style="width:48px;height:48px;border-radius:50%" />{/if}
+          <div><div class="t">{spMe?.name ?? 'Spotify connected'}</div><div class="d">Your playlists, profile and the people you follow show up on your profile page.</div></div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="pill-btn outline" onclick={() => go('/me')}>Open profile</button>
+          <button class="pill-btn outline" onclick={() => spotify.disconnect()}>Disconnect</button>
+        </div>
+      </div>
+    {:else}
+      <div class="set-row">
+        <div class="l">
+          <div class="t">Link your Spotify account</div>
+          <div class="d">Spotify only lets apps sign in through a developer app you own (free, takes a minute):</div>
+          <ol class="sp-steps">
+            <li>Open <a href="#/" onclick={(e) => { e.preventDefault(); openExternal('https://developer.spotify.com/dashboard'); }}>developer.spotify.com/dashboard</a> and click <b>Create app</b>.</li>
+            <li>Any name and description. Add the Redirect URI <code>{REDIRECT}</code> <button class="link-btn" onclick={() => navigator.clipboard.writeText(REDIRECT).then(() => ui.toast('Copied'))}>copy</button></li>
+            <li>Tick <b>Web API</b>, save, and paste the app's <b>Client ID</b> here.</li>
+          </ol>
+          <div style="display:flex;gap:8px;align-items:center;margin-top:10px">
+            <input class="input" style="width:280px" placeholder="Client ID" value={settings.spotifyClientId} oninput={(e) => set('spotifyClientId', (e.currentTarget as HTMLInputElement).value.trim())} />
+            <button class="pill-btn" disabled={spotify.connecting || !settings.spotifyClientId} onclick={() => spotify.connect()}>{spotify.connecting ? 'Waiting…' : 'Connect'}</button>
+          </div>
+        </div>
+      </div>
+    {/if}
+    <div class="set-row">
+      <div class="l"><div class="t">Friends & profiles <span class="beta">Experimental</span></div><div class="d">Show your Spotify friends' activity and browse anyone's full profile. Spotify doesn't offer this to apps, so SpotiTube signs into the Spotify web player in a small window and uses its session. Unofficial: it can break whenever Spotify changes its site.</div></div>
+      <button class="toggle" class:on={settings.spotifyFriends} aria-label="Spotify friends" onclick={() => set('spotifyFriends', !settings.spotifyFriends)}></button>
+    </div>
+    {#if settings.spotifyFriends}
+      <div class="set-row">
+        <div class="l"><div class="t">Spotify web session</div><div class="d">{settings.spotifyWeb ? 'Signed in. The session refreshes itself in the background.' : 'Sign in once with your Spotify account.'}</div></div>
+        {#if settings.spotifyWeb}
+          <button class="pill-btn outline" onclick={() => spotify.webLogout()}>Sign out</button>
+        {:else}
+          <button class="pill-btn" onclick={() => spotify.webConnect()}>Sign in to Spotify</button>
+        {/if}
       </div>
     {/if}
 

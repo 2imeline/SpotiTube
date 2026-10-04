@@ -21,6 +21,7 @@
   import { player } from './lib/player/player.svelte';
   import { updater } from './lib/stores/updater.svelte';
   import { initDiscord } from './lib/player/discord.svelte';
+  import { spotify } from './lib/stores/spotify.svelte';
 
   let sidebarW = $state(+(localStorage.getItem('st.sidebarW') ?? 300) || 300);
   let rightW = $state(+(localStorage.getItem('st.rightW') ?? 320) || 320);
@@ -31,6 +32,7 @@
     auth.init().then(() => library.refresh());
     updater.init(settings.autoUpdate);
     initDiscord();
+    spotify.init();
   });
 
   // refresh library when the account changes

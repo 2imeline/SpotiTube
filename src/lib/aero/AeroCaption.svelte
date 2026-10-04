@@ -39,6 +39,9 @@
       case 'history': c.push({ label: 'Library', path: '/library' }, { label: 'History' }); break;
       case 'lyrics': c.push({ label: 'Now Playing' }, { label: 'Lyrics' }); break;
       case 'settings': c.push({ label: 'Options' }); break;
+      case 'me': c.push({ label: 'Profile & friends' }); break;
+      case 'sp-user': c.push({ label: 'Profile & friends', path: '/me' }, { label: title ? `${title} (Spotify)` : '…' }); break;
+      case 'sp-playlist': c.push({ label: 'Profile & friends', path: '/me' }, { label: title ? `${title} (Spotify)` : '…' }); break;
       default: c.push({ label: r.name });
     }
     return c.filter((x) => x.label);

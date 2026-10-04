@@ -57,7 +57,7 @@
 
   function isCurrent(t: Track) {
     const c = player.current;
-    return !!c && c.videoId === t.videoId && (!source?.path || !player.source?.path || player.source.path === source.path);
+    return !!c && (c.videoId === t.videoId || (!!t.spotifyId && c.spotifyId === t.spotifyId)) && (!source?.path || !player.source?.path || player.source.path === source.path);
   }
 
   onMount(() => {

@@ -7,6 +7,7 @@
 
 mod discord;
 mod proxy;
+mod spotify;
 mod updater;
 
 use std::collections::{BTreeMap, HashMap};
@@ -56,6 +57,7 @@ struct AppState {
     auth_path: PathBuf,
     proxy: proxy::ProxyInfo,
     discord: discord::Discord,
+    spotify: spotify::Spotify,
 }
 
 impl AppState {
@@ -475,6 +477,7 @@ pub fn run() {
                 auth_path,
                 proxy: proxy::start(),
                 discord: discord::Discord::start(),
+                spotify: spotify::Spotify::load(&dir),
             });
             Ok(())
         })
@@ -493,6 +496,13 @@ pub fn run() {
             discord_set_activity,
             updater::check_update,
             updater::install_update,
+            spotify::spotify_login,
+            spotify::spotify_logout,
+            spotify::spotify_web_connect,
+            spotify::spotify_web_token,
+            spotify::spotify_web_logout,
+            spotify::spotify_status,
+            spotify::spotify_get,
         ])
         .run(tauri::generate_context!())
         .expect("error while running SpotiTube");

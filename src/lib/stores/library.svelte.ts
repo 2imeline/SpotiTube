@@ -1,4 +1,5 @@
 import type { Card, LikeStatus, Track } from '../api/types';
+import { matchTrack, needsMatch } from '../api/match';
 import { LIBRARY, getLibrary, loadAll, rateSong, ratePlaylist, subscribe, unsubscribe, sendFeedback } from '../api/ytm';
 import { auth } from './auth.svelte';
 import { ui } from './ui.svelte';
@@ -38,12 +39,20 @@ class Library {
     return this.likes[t.videoId] ?? t.likeStatus ?? 'INDIFFERENT';
   }
 
-  async rate(t: Pick<Track, 'videoId' | 'likeStatus' | 'title'>, status: LikeStatus) {
+  async rate(t: Track, status: LikeStatus) {
     if (!auth.loggedIn) return ui.toast('Sign in to rate songs');
     const prev = this.likeOf(t);
     this.likes[t.videoId] = status;
     try {
-      await rateSong(t.videoId, status);
+      let id = t.videoId;
+      // Spotify track: rate its YouTube Music match
+      if (needsMatch(t)) {
+        const m = await matchTrack(t);
+        if (!m) throw new Error(`Couldn't find "${t.title}" on YouTube Music`);
+        id = m.videoId;
+        this.likes[id] = status;
+      }
+      await rateSong(id, status);
       ui.toast(status === 'LIKE' ? 'Added to Liked Music' : status === 'DISLIKE' ? 'Disliked' : 'Removed from Liked Music');
     } catch (e) {
       this.likes[t.videoId] = prev;

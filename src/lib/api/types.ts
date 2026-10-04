@@ -86,6 +86,8 @@ export interface Track {
   description?: string;
   /** unique id inside the play queue */
   qid?: number;
+  /** Spotify track id: played through its YouTube Music match */
+  spotifyId?: string;
 }
 
 export interface Card {

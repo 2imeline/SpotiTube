@@ -21,6 +21,8 @@ import { ui, type MenuAction } from './stores/ui.svelte';
 import { library } from './stores/library.svelte';
 import { auth } from './stores/auth.svelte';
 import { updater } from './stores/updater.svelte';
+import { call } from './api/transport';
+import { needsMatch, resolveAll, resolveTrack } from './api/match';
 
 export function artistRoute(id?: string | null) {
   return id ? `/artist/${id}` : null;
@@ -219,7 +221,68 @@ export interface TrackMenuContext {
   queueIndex?: number;
 }
 
+/** Menu for a Spotify track that hasn't been matched to YouTube Music yet. */
+function spotifyTrackMenu(t: Track, ctx: TrackMenuContext): MenuAction[] {
+  const like = library.likeOf(t);
+  const a: MenuAction[] = [
+    { label: 'Add to playlist', icon: 'plus', submenu: playlistSubmenu(async () => ({ videoIds: await resolveAll([t]) })) },
+    { label: like === 'LIKE' ? 'Remove from Liked Music' : 'Save to Liked Music', icon: like === 'LIKE' ? 'heartFill' : 'heart', run: () => library.toggleLike(t) },
+    { label: '', divider: true },
+  ];
+  if (ctx.queueIndex != null) a.push({ label: 'Remove from queue', icon: 'close', run: () => player.removeAt(ctx.queueIndex!) });
+  else
+    a.push(
+      { label: 'Play next', icon: 'queue', run: () => player.playNext([t]) },
+      { label: 'Add to queue', icon: 'queue', run: () => player.addToQueue([t]) },
+    );
+  a.push(
+    {
+      label: 'Start radio',
+      icon: 'radio',
+      run: async () => {
+        const c = { ...t };
+        if (await resolveTrack(c).catch(() => false)) player.startRadio({ videoId: c.videoId, title: t.title });
+        else ui.toast(`Couldn't find "${t.title}" on YouTube Music`);
+      },
+    },
+    { label: '', divider: true },
+    { label: 'Find on YouTube Music', icon: 'search', run: () => go(`/search?q=${encodeURIComponent(`${t.title} ${t.artists.map((x) => x.name).join(' ')}`)}`) },
+  );
+  if (t.spotifyId) {
+    const url = `https://open.spotify.com/track/${t.spotifyId}`;
+    a.push({ label: 'Open in Spotify', icon: 'share', run: () => openExternal(url) }, { label: 'Copy Spotify link', icon: 'copy', run: () => copy(url) });
+  }
+  return a;
+}
+
+export function openExternal(url: string) {
+  call('open_external', { url }).catch(() => window.open(url, '_blank'));
+}
+
+/** Matches a Spotify track list on YouTube Music and saves it as a new playlist. */
+export async function copySpotifyPlaylist(name: string, tracks: Track[]) {
+  if (!auth.loggedIn) return ui.toast('Sign in with Google to create playlists');
+  ui.toast(`Finding ${tracks.length} songs on YouTube Music…`, 'info', 4000);
+  let last = 0;
+  const ids = await resolveAll(tracks, (n) => {
+    if (n - last >= 25 && n < tracks.length) {
+      last = n;
+      ui.toast(`Matched ${n} of ${tracks.length}…`, 'info', 2500);
+    }
+  });
+  if (!ids.length) return ui.toast('None of these songs were found on YouTube Music', 'error');
+  try {
+    const id = await createPlaylist(name, `Imported from Spotify with SpotiTube`, 'PRIVATE', ids);
+    library.refresh();
+    ui.toast(`Created "${name}" with ${ids.length} of ${tracks.length} songs`);
+    go(`/playlist/${id}`);
+  } catch (e) {
+    ui.error(e);
+  }
+}
+
 export function trackMenu(t: Track, ctx: TrackMenuContext = {}): MenuAction[] {
+  if (needsMatch(t)) return spotifyTrackMenu(t, ctx);
   const like = library.likeOf(t);
   const a: MenuAction[] = [
     { label: 'Add to playlist', icon: 'plus', submenu: playlistSubmenu(async () => ({ videoIds: [t.videoId] })) },
@@ -384,8 +447,8 @@ export function itemMenu(i: Item, e: MouseEvent, ctx?: TrackMenuContext) {
 /** Avatar / account menu (shared by both themes). */
 export function openAccountMenu(e: MouseEvent) {
   const actions: MenuAction[] = [];
+  actions.push({ label: 'Profile & friends', icon: 'user', run: () => go('/me') });
   if (auth.loggedIn) {
-    actions.push({ label: auth.account?.name ?? 'Account', icon: 'user', disabled: true });
     actions.push({
       label: 'Switch account',
       icon: 'user',

@@ -8,6 +8,7 @@ import { auth } from '../stores/auth.svelte';
 import { settings } from '../stores/settings.svelte';
 import { ui } from '../stores/ui.svelte';
 import { bestThumb } from '../util/thumbs';
+import { needsMatch, resolveTrack } from '../api/match';
 
 export interface QueueSource {
   title: string;
@@ -157,6 +158,13 @@ class Player {
     this.updateMetadata();
     if (this.queue.length - index <= 3) this.extend();
     try {
+      // tracks from Spotify: find the YouTube Music song first
+      if (needsMatch(t)) {
+        const ok = await resolveTrack(t);
+        if (token !== this.loadToken) return;
+        if (!ok) throw new Error('not found on YouTube Music');
+        this.failedFor = t.videoId;
+      }
       const id = this.video && t.type === 'song' && t.counterpart ? t.counterpart.videoId : t.videoId;
       let s: Stream;
       try {
@@ -235,7 +243,9 @@ class Player {
       const nxt = this.queue[this.index + 1];
       if (nxt && this.prefetched !== nxt.videoId) {
         this.prefetched = nxt.videoId;
-        resolveStream(nxt.videoId, this.video).catch(() => {});
+        (needsMatch(nxt) ? resolveTrack(nxt) : Promise.resolve(true))
+          .then((ok): unknown => ok && resolveStream(nxt.videoId, this.video))
+          .catch(() => {});
       }
     }
   }
@@ -276,6 +286,7 @@ class Player {
       if (!settings.autoplay || this.repeat === 'all') return false;
       const last = this.queue[this.queue.length - 1];
       if (!last || this.index < this.queue.length - 2) return false;
+      if (needsMatch(last) && !(await resolveTrack(last).catch(() => false))) return false;
       // seed autoplay from the whole playlist (more varied) when possible, else from the last song
       const pl = this.source?.path?.match(/^\/playlist\/([^/?]+)/)?.[1];
       const r = pl && pl !== 'LM' && pl !== 'SE'

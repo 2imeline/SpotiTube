@@ -1,6 +1,6 @@
 [package]
 name = "spotitube"
-version = "1.4.0"
+version = "1.5.0"
 description = "SpotiTube - a lightweight native YouTube Music desktop client"
 authors = ["SpotiTube"]
 edition = "2021"

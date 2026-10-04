@@ -12,6 +12,9 @@
   import History from '../views/History.svelte';
   import Lyrics from '../views/Lyrics.svelte';
   import Settings from '../views/Settings.svelte';
+  import Profile from '../spotify/Profile.svelte';
+  import SpUser from '../spotify/SpUser.svelte';
+  import SpPlaylist from '../spotify/SpPlaylist.svelte';
   import { tick } from 'svelte';
 
   let scroller: HTMLDivElement;
@@ -77,6 +80,12 @@
         <Lyrics />
       {:else if r.name === 'settings'}
         <Settings />
+      {:else if r.name === 'me'}
+        <Profile />
+      {:else if r.name === 'sp-user'}
+        <SpUser id={r.params[0]} />
+      {:else if r.name === 'sp-playlist'}
+        <SpPlaylist id={r.params[0]} />
       {:else}
         <div class="center-msg"><h2>Page not found</h2></div>
       {/if}
