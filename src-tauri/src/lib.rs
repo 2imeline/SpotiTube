@@ -6,6 +6,7 @@
 //! local proxy (see `proxy.rs`).
 
 mod proxy;
+mod updater;
 
 use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
@@ -475,6 +476,8 @@ pub fn run() {
             upload_song,
             set_media_keys,
             open_external,
+            updater::check_update,
+            updater::install_update,
         ])
         .run(tauri::generate_context!())
         .expect("error while running SpotiTube");

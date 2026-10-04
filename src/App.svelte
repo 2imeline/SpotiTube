@@ -18,6 +18,7 @@
   import { auth } from './lib/stores/auth.svelte';
   import { library } from './lib/stores/library.svelte';
   import { player } from './lib/player/player.svelte';
+  import { updater } from './lib/stores/updater.svelte';
 
   let sidebarW = $state(+(localStorage.getItem('st.sidebarW') ?? 300) || 300);
   let rightW = $state(+(localStorage.getItem('st.rightW') ?? 320) || 320);
@@ -26,6 +27,7 @@
   onMount(() => {
     player.init();
     auth.init().then(() => library.refresh());
+    updater.init(settings.autoUpdate);
   });
 
   // refresh library when the account changes

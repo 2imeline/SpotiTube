@@ -5,6 +5,7 @@
   import { router, go } from '../stores/router.svelte';
   import { auth } from '../stores/auth.svelte';
   import { openAccountMenu } from '../actions';
+  import { updater } from '../stores/updater.svelte';
 </script>
 
 <header class="titlebar">
@@ -25,6 +26,11 @@
   </div>
 
   <div class="tb-right">
+    {#if updater.available}
+      <button class="pill-btn update-pill" title="Install SpotiTube {updater.info?.latest}" onclick={() => updater.install()} disabled={updater.installing}>
+        <Icon name="download" size={14} />{updater.installing ? `Updating ${Math.round(updater.progress * 100)}%` : 'Update'}
+      </button>
+    {/if}
     {#if auth.ready && !auth.loggedIn}
       <button class="pill-btn ghost" onclick={() => go('/settings')}>Settings</button>
       <button class="pill-btn" onclick={() => auth.login()}>Log in</button>

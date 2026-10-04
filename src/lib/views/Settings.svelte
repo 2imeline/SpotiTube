@@ -6,6 +6,7 @@
   import { updateSolver } from '../player/streams';
   import ColorWheel from '../components/ColorWheel.svelte';
   import Icon from '../components/Icon.svelte';
+  import { updater } from '../stores/updater.svelte';
 
   function set<K extends keyof typeof settings>(k: K, v: (typeof settings)[K]) {
     settings[k] = v;
@@ -206,9 +207,42 @@
       <button class="pill-btn outline" onclick={resetSettings}>Reset</button>
     </div>
 
+    <h2>Updates</h2>
+    <div class="set-row">
+      <div class="l">
+        <div class="t">SpotiTube {updater.info?.current ?? updater.version}</div>
+        <div class="d">
+          {#if updater.installing}
+            Downloading update… {Math.round(updater.progress * 100)}%
+          {:else if updater.available}
+            Version {updater.info?.latest} is available. It installs in place and SpotiTube reopens by itself.
+          {:else if updater.info}
+            You're on the latest version.
+          {:else}
+            Check GitHub for a newer version and install it without re-downloading anything yourself.
+          {/if}
+        </div>
+        {#if updater.installing}
+          <div style="height:4px;border-radius:2px;background:rgba(127,127,127,.3);margin-top:8px;overflow:hidden;max-width:320px"><div style="height:100%;width:{updater.progress * 100}%;background:var(--accent)"></div></div>
+        {/if}
+      </div>
+      {#if updater.available}
+        <button class="pill-btn accent" onclick={() => updater.install()} disabled={updater.installing}>{updater.installing ? 'Updating…' : 'Update now'}</button>
+      {:else}
+        <button class="pill-btn outline" onclick={() => updater.check()} disabled={updater.checking}>{updater.checking ? 'Checking…' : 'Check for updates'}</button>
+      {/if}
+    </div>
+    {#if updater.available && updater.info?.notes}
+      <div class="selectable" style="white-space:pre-line;color:var(--text-sub);font-size:13px;line-height:1.5;padding:4px 0 8px">{updater.info.notes}</div>
+    {/if}
+    <div class="set-row">
+      <div class="l"><div class="t">Check for updates automatically</div><div class="d">Look for a new version when SpotiTube starts and show an "Update" button when one is available.</div></div>
+      <button class="toggle" class:on={settings.autoUpdate} aria-label="Check for updates automatically" onclick={() => set('autoUpdate', !settings.autoUpdate)}></button>
+    </div>
+
     <h2>About</h2>
     <div class="set-row">
-      <div class="l"><div class="t">SpotiTube 1.1.0</div><div class="d">A lightweight native YouTube Music client. Not affiliated with Google, YouTube or Spotify.</div></div>
+      <div class="l"><div class="t">SpotiTube</div><div class="d">A lightweight native YouTube Music client. Not affiliated with Google, YouTube or Spotify.</div></div>
       <Icon name="info" size={20} />
     </div>
   </div>

@@ -2371,3 +2371,11 @@ select.input option {
     grid-template-columns: 1fr;
   }
 }
+
+.update-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--accent);
+  color: var(--on-accent);
+}

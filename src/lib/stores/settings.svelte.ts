@@ -21,6 +21,7 @@ export interface Settings {
   explicit: boolean;
   closeToMini: boolean;
   aeroWallpaper: 'aurora' | 'sky' | 'bubbles';
+  autoUpdate: boolean;
 }
 
 const DEFAULTS: Settings = {
@@ -40,6 +41,7 @@ const DEFAULTS: Settings = {
   explicit: true,
   closeToMini: false,
   aeroWallpaper: 'aurora',
+  autoUpdate: true,
 };
 
 const KEY = 'st.settings';

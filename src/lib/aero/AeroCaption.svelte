@@ -6,6 +6,7 @@
   import { ui } from '../stores/ui.svelte';
   import { player } from '../player/player.svelte';
   import { artistNames } from '../util/thumbs';
+  import { updater } from '../stores/updater.svelte';
 
   type Crumb = { label: string; path?: string };
   const LIB_TABS: Record<string, string> = {
@@ -73,6 +74,11 @@
       {/each}
       <span class="addr-fill" data-tauri-drag-region></span>
     </nav>
+    {#if updater.available}
+      <button class="aero-update" title="Install SpotiTube {updater.info?.latest}" onclick={() => updater.install()} disabled={updater.installing}>
+        <span class="shield"><Icon name="download" size={11} /></span>{updater.installing ? `Installing… ${Math.round(updater.progress * 100)}%` : `Update to ${updater.info?.latest}`}
+      </button>
+    {/if}
     <div class="aero-search"><SearchBox variant="aero" placeholder="Search YouTube Music" /></div>
   </div>
 </header>
@@ -207,6 +213,35 @@
   .addr-fill {
     flex: 1;
     align-self: stretch;
+  }
+  .aero-update {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 26px;
+    padding: 0 10px 0 6px;
+    border-radius: 3px;
+    font-size: 12px;
+    color: #000;
+    border: 1px solid #7a9cc6;
+    background: linear-gradient(#fdfdfd, #e9f3fd 49%, #d2e6fb 50%, #e8f3fe);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.8), 0 0 8px rgba(255, 210, 60, 0.75);
+    white-space: nowrap;
+  }
+  .aero-update:hover {
+    border-color: #3c7fb1;
+    background: linear-gradient(#f2faff, #d9f0fd 49%, #bee6fd 50%, #a7d9f5);
+  }
+  /* Windows Update-style shield */
+  .shield {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px 3px 8px 8px;
+    display: grid;
+    place-items: center;
+    color: #fff;
+    background: linear-gradient(90deg, #2a7de1 50%, #f5b915 50%);
+    border: 1px solid rgba(0, 0, 0, 0.35);
   }
   .aero-search {
     width: 280px;

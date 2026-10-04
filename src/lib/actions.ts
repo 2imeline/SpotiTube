@@ -20,6 +20,7 @@ import { go } from './stores/router.svelte';
 import { ui, type MenuAction } from './stores/ui.svelte';
 import { library } from './stores/library.svelte';
 import { auth } from './stores/auth.svelte';
+import { updater } from './stores/updater.svelte';
 
 export function artistRoute(id?: string | null) {
   return id ? `/artist/${id}` : null;
@@ -396,6 +397,7 @@ export function openAccountMenu(e: MouseEvent) {
     });
     actions.push({ label: '', divider: true });
   }
+  if (updater.available) actions.unshift({ label: `Update SpotiTube to ${updater.info?.latest}`, icon: 'download', run: () => updater.install() }, { label: '', divider: true });
   actions.push({ label: 'Settings', icon: 'settings', run: () => go('/settings') });
   actions.push({ label: 'Listening history', icon: 'history', run: () => go('/history') });
   actions.push({ label: '', divider: true });
