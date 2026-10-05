@@ -358,8 +358,12 @@ html.mobile .chip.active {
   z-index: 6;
   align-items: center;
   margin: 0 calc(-1 * var(--m-pad));
-  padding: calc(var(--sat) + 8px) var(--m-pad) 10px !important;
+  padding: 8px var(--m-pad) 10px !important;
   background: var(--m-bg);
+}
+/* Spotify: avatar + chips form the top bar */
+.m-home-chips:has(.m-head) {
+  padding-top: calc(var(--sat) + 8px) !important;
 }
 /* pages without their own phone header: clear the status bar (+ back button) */
 html.mobile .m-app[data-root='false'] .view > .view-pad:first-child {
@@ -679,6 +683,13 @@ html.mobile .about-card .body {
   margin: 0 calc(-1 * var(--m-pad));
   padding: 6px var(--m-pad) 10px;
   background: var(--m-bg);
+}
+/* with a query the title is gone: the box becomes the top bar */
+.m-search-box:first-child {
+  padding-top: calc(var(--sat) + 8px);
+}
+html.mobile .m-search-box:first-child ~ .chips[style*='sticky'] {
+  top: calc(var(--sat) + 62px) !important;
 }
 .view-pad:has(.m-search-box) .m-head + .m-search-box {
   top: 0;
