@@ -1,7 +1,8 @@
 # SpotiTube
 
-A **lightweight, native YouTube Music desktop app** for Windows with a pixel-faithful
-Spotify-style interface — and a glossy **Frutiger Aero / Windows 7** theme.
+A **lightweight, native YouTube Music app** for Windows and iPhone with a pixel-faithful
+Spotify-style interface — plus a glossy **Frutiger Aero / Windows 7** theme and an
+**Apple Music** theme.
 
 It is *not* a wrapped music.youtube.com tab: the UI is a small (~90 KB gzipped)
 Svelte app rendered by the system WebView2, talking directly to YouTube Music's
@@ -19,6 +20,25 @@ Grab the latest build from the **[Releases](../../releases/latest)** page:
 | `SpotiTube-x.y.z.msi` | MSI package |
 
 Windows 10/11. Uses the Microsoft Edge WebView2 runtime that ships with Windows.
+
+### iPhone
+
+| File | What it is |
+| --- | --- |
+| `SpotiTube-x.y.z.ipa` | Unsigned IPA: sideload it with **AltStore / SideStore**, **Sideloadly** or similar (they sign it with your Apple ID) |
+| `SpotiTube-x.y.z-TrollStore.tipa` | For **TrollStore**; also carries the CarPlay entitlement |
+
+iOS 16 or later. The iPhone app has its own phone layouts for all three themes
+(Spotify for iPhone, Apple Music on iOS, and a glossy Aero phone UI) and the same
+YouTube Music features as the desktop app, with native playback:
+
+- Plays in the background and with the screen locked; lock screen, Control Center, headphone and AirPods controls
+- The next song is queued natively in advance, so playback keeps going while the app is asleep
+- AirPlay / Bluetooth output picker, sleep timer, Song ⇄ Video switch with native video
+- **CarPlay**: SpotiTube always shows up in CarPlay's *Now Playing* with play/pause, skip, seek, shuffle and repeat.
+  Its own CarPlay app (Home, Library, Recents, Up Next) appears when the app is signed with Apple's
+  `carplay-audio` entitlement — the TrollStore build has it; a free/personal Apple ID signature can't include it.
+- Updates: Settings → Updates checks GitHub and downloads the newest IPA for your sideloading app
 
 ## Features
 
@@ -91,6 +111,19 @@ npx tauri dev            # development
 
 Requires Node 20+ and Rust (stable). The GitHub Actions workflow in
 `.github/workflows/build.yml` builds the Windows release automatically.
+
+**iPhone** (macOS + Xcode 16):
+
+```bash
+npm ci && npm run build
+cp -R dist ios/SpotiTube/web
+cd ios && xcodegen generate && open SpotiTube.xcodeproj
+```
+
+The iOS app is a small Swift shell (`ios/SpotiTube`): it hosts the same web UI,
+answers its commands natively (network with the Google session, sign-in sheets,
+Spotify), plays audio with AVPlayer and drives CarPlay. CI builds the IPA and runs
+the app in the iPhone simulator on every push.
 
 ## Credits
 
