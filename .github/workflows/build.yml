@@ -97,6 +97,7 @@ jobs:
         run: |
           mkdir -p out Payload
           cp -R build/device/Build/Products/Release-iphoneos/SpotiTube.app Payload/
+          echo "linked libraries:"; otool -L Payload/SpotiTube.app/SpotiTube
           zip -qry "out/SpotiTube-$VERSION.ipa" Payload
           # TrollStore build: fake-signed with the CarPlay entitlement
           ldid -Sios/SpotiTube/SpotiTube.entitlements Payload/SpotiTube.app/SpotiTube
