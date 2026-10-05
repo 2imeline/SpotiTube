@@ -119,18 +119,27 @@ export async function runAutotest() {
   }
   await call('autotest_done').catch(() => {});
 
-  // background test: CI sends the app to the background while a song ends,
-  // the native queue + web callbacks must carry on to the following songs
+  // Native engine + background test with plain MP3s (YouTube refuses CI
+  // machines' IPs): song A ends while the app is in the background and
+  // AVQueuePlayer must continue with B, waking the page to sync.
   try {
-    if (player.current && player.duration > 30) {
-      if (!player.playing) await player.toggle();
+    const nm = player.native;
+    if (nm) {
+      const url = (u: string) => `stream://local/?k=1&u=${encodeURIComponent(u)}&ua=${encodeURIComponent(navigator.userAgent)}`;
+      (window as any).__autotestNoAdvance = true;
+      nm.meta = { title: 'Engine test A', artist: 'SoundHelix', mime: 'audio/mpeg', qid: -1 };
+      nm.src = url('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3');
+      await nm.play();
+      await sleep(8000);
+      log(`engine A: time=${nm.currentTime.toFixed(1)} duration=${nm.duration} paused=${nm.paused} error=${nm.error?.message ?? 'none'}`);
+      nm.currentTime = Math.max(0, (isFinite(nm.duration) ? nm.duration : 372) - 25);
       await sleep(3000);
-      player.seek(Math.max(0, player.duration - 25));
-      await sleep(1500);
-      state('before background');
+      log(`engine A after seek: time=${nm.currentTime.toFixed(1)} paused=${nm.paused}`);
+      nm.preloadNext(url('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3'), { title: 'Engine test B', artist: 'SoundHelix', mime: 'audio/mpeg', qid: -2 });
+      await sleep(1000);
       await call('autotest_bg');
     }
   } catch (e: any) {
-    log(`background test error: ${e?.message ?? e}`);
+    log(`engine test error: ${e?.message ?? e}`);
   }
 }

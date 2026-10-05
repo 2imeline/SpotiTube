@@ -193,15 +193,14 @@ jobs:
 
       - name: Publish screenshots (CI)
         if: always()
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ios-autotest
-          name: iOS simulator test (CI)
-          prerelease: true
-          make_latest: false
-          target_commitish: ${{ github.sha }}
-          files: ios-autotest.zip
-          body: Screenshots and logs from the latest automated iPhone simulator run. Not a release.
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [ -f ios-autotest.zip ] || exit 0
+          gh release view ios-autotest --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
+            gh release create ios-autotest --repo "$GITHUB_REPOSITORY" --prerelease --title "iOS simulator test (CI)" \
+              --notes "Screenshots and logs from the latest automated iPhone simulator run. Not a release."
+          gh release upload ios-autotest ios-autotest.zip --clobber --repo "$GITHUB_REPOSITORY"
 
   release:
     needs: [windows, ios]

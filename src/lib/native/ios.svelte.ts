@@ -41,6 +41,10 @@ async function handle(name: string, args: any): Promise<unknown> {
       await player.onEnded();
       return true;
     case 'advanced':
+      if ((window as any).__autotestNoAdvance) {
+        call('autotest_log', { message: `page handled 'advanced' (qid ${args?.qid}, visibility ${document.visibilityState})` }).catch(() => {});
+        return true;
+      }
       await player.onNativeAdvanced(args?.qid ?? null);
       return true;
     case 'remote':
