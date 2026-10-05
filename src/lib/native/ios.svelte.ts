@@ -61,7 +61,19 @@ function darkStatusBar(): boolean {
 }
 
 export async function initIOS() {
-  (window as any).__native = { handle };
+  (window as any).__native = {
+    handle,
+    // native → page call: run `handle` and answer through the bridge
+    call(id: number, name: string, argsJSON: string) {
+      Promise.resolve()
+        .then(() => handle(name, JSON.parse(argsJSON)))
+        .then(
+          (result) => call('__reply', { id, result: result ?? null }),
+          (e) => call('__reply', { id, error: String(e?.message ?? e) }),
+        )
+        .catch(() => {});
+    },
+  };
 
   $effect.root(() => {
     // lock screen / CarPlay buttons

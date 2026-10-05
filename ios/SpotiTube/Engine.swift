@@ -34,6 +34,14 @@ final class Engine: NSObject, WKNavigationDelegate, WKUIDelegate {
         cfg.mediaTypesRequiringUserActionForPlayback = []
         cfg.suppressesIncrementalRendering = false
         cfg.websiteDataStore = .default()
+        // keep the page's JavaScript (queue, CarPlay lists) running while the
+        // app plays in the background; private WebKit setting, so guarded
+        let fg = NSSelectorFromString("_setAlwaysRunsAtForegroundPriority:")
+        if cfg.responds(to: fg) {
+            typealias SetBool = @convention(c) (AnyObject, Selector, Bool) -> Void
+            unsafeBitCast(cfg.method(for: fg), to: SetBool.self)(cfg, fg, true)
+            Log.write("web view runs at foreground priority")
+        }
         let bounds = CGRect(x: 0, y: 0, width: 390, height: 844)
         webView = WKWebView(frame: bounds, configuration: cfg)
         super.init()
@@ -88,21 +96,36 @@ final class Engine: NSObject, WKNavigationDelegate, WKUIDelegate {
 
     // MARK: native → JS
 
-    /// Calls `window.__native.handle(name, args)` and waits for its promise.
-    /// While this runs WebKit keeps the page process awake, which is what lets
-    /// the queue advance and CarPlay load lists with the phone locked.
+    /// Calls `window.__native.handle(name, args)` and waits for its promise
+    /// (the page answers through the bridge with `__reply`). Plain
+    /// evaluateJavaScript keeps us off WebKit's Swift overlay, which recent
+    /// iOS versions no longer ship as a separate library.
+    private var replies: [Int: CheckedContinuation<Any?, Error>] = [:]
+    private var nextReply = 0
+
     @MainActor
     @discardableResult
     func call(_ name: String, _ args: Any = [String: Any]()) async throws -> Any? {
         await waitReady()
-        let r = try await webView.callAsyncJavaScript(
-            "return JSON.stringify(await window.__native.handle(name, JSON.parse(args)) ?? null)",
-            arguments: ["name": name, "args": Engine.jsonString(args)],
-            in: nil,
-            contentWorld: .page
-        )
-        guard let s = r as? String, let d = s.data(using: .utf8) else { return nil }
-        return try? JSONSerialization.jsonObject(with: d, options: [.fragmentsAllowed])
+        nextReply += 1
+        let id = nextReply
+        let js = "window.__native.call(\(id),\(Engine.jsonString(name)),\(Engine.jsonString(Engine.jsonString(args))))"
+        return try await withCheckedThrowingContinuation { (c: CheckedContinuation<Any?, Error>) in
+            replies[id] = c
+            webView.evaluateJavaScript(js) { [weak self] _, err in
+                // the script itself only starts the work; a failure here means the page isn't ready
+                if let err, let c = self?.replies.removeValue(forKey: id) { c.resume(throwing: err) }
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 90) { [weak self] in
+                self?.replies.removeValue(forKey: id)?.resume(throwing: BridgeError("\(name) timed out"))
+            }
+        }
+    }
+
+    /// `__reply` from the page: {id, result} or {id, error}
+    func reply(_ a: [String: Any]) {
+        guard let id = a["id"] as? Int, let c = replies.removeValue(forKey: id) else { return }
+        if let e = a["error"] as? String { c.resume(throwing: BridgeError(e)) } else { c.resume(returning: a["result"]) }
     }
 
     /// Fire-and-forget Tauri-style event (`listen()` in the web code).
@@ -165,6 +188,8 @@ final class Engine: NSObject, WKNavigationDelegate, WKUIDelegate {
     func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
         Log.write("web content process terminated, reloading")
         ready = false
+        for (_, c) in replies { c.resume(throwing: BridgeError("page reloaded")) }
+        replies = [:]
         load()
     }
 

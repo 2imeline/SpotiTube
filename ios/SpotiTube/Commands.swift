@@ -13,6 +13,9 @@ enum Commands {
     @MainActor
     static func run(_ cmd: String, _ a: [String: Any]) async throws -> Any? {
         switch cmd {
+        case "__reply":
+            Engine.shared.reply(a)
+            return nil
         case "native_ready":
             Engine.shared.markReady()
             return ["platform": "ios", "version": Engine.appVersion, "carplay": CarPlaySceneDelegate.connected]
