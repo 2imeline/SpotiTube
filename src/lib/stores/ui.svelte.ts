@@ -42,6 +42,13 @@ class UI {
   sidebarCollapsed = $state(false);
   fullscreenPlayer = $state(false);
   miniPlayer = $state(false);
+  // ---- phone layout
+  nowPlayingOpen = $state(false);
+  /** pane shown over the phone's now playing screen */
+  npPane = $state<'none' | 'queue' | 'lyrics'>('none');
+  drawerOpen = $state(false);
+  /** a page shows its own top bar (back button + title) */
+  pageBar = $state(0);
   scrollY = $state(0);
   /** title of the page currently shown (used by the Aero breadcrumb) */
   page = $state<{ path: string; title: string } | null>(null);

@@ -1,0 +1,84 @@
+# XcodeGen spec: `xcodegen generate --spec ios/project.yml`
+# The web UI (npm run build → dist/) is copied to SpotiTube/web before building.
+name: SpotiTube
+options:
+  bundleIdPrefix: app.spotitube
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    MARKETING_VERSION: "1.6.0"
+    CURRENT_PROJECT_VERSION: "1"
+    SWIFT_VERSION: "5.0"
+    TARGETED_DEVICE_FAMILY: "1,2"
+    ENABLE_BITCODE: NO
+    DEAD_CODE_STRIPPING: YES
+targets:
+  SpotiTube:
+    type: application
+    platform: iOS
+    sources:
+      - path: SpotiTube
+        excludes:
+          - "web"
+          - "web/**"
+          - "Resources"
+          - "Resources/**"
+      - path: SpotiTube/Resources
+        buildPhase: resources
+      - path: SpotiTube/web
+        type: folder
+        buildPhase: resources
+    entitlements:
+      path: SpotiTube/SpotiTube.entitlements
+      properties:
+        com.apple.developer.carplay-audio: true
+    info:
+      path: SpotiTube/Info.plist
+      properties:
+        CFBundleDisplayName: SpotiTube
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSRequiresIPhoneOS: true
+        ITSAppUsesNonExemptEncryption: false
+        UIBackgroundModes: [audio]
+        UIRequiresFullScreen: true
+        UIStatusBarStyle: UIStatusBarStyleLightContent
+        UIViewControllerBasedStatusBarAppearance: true
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UILaunchScreen:
+          UIColorName: LaunchBg
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+          UISceneConfigurations:
+            UIWindowSceneSessionRoleApplication:
+              - UISceneConfigurationName: Default
+                UISceneDelegateClassName: $(PRODUCT_MODULE_NAME).SceneDelegate
+            CPTemplateApplicationSceneSessionRoleApplication:
+              - UISceneConfigurationName: CarPlay
+                UISceneClassName: CPTemplateApplicationScene
+                UISceneDelegateClassName: $(PRODUCT_MODULE_NAME).CarPlaySceneDelegate
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.spotitube.ios
+        PRODUCT_NAME: SpotiTube
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        INFOPLIST_FILE: SpotiTube/Info.plist
+        CODE_SIGN_ENTITLEMENTS: SpotiTube/SpotiTube.entitlements
+        SWIFT_OPTIMIZATION_LEVEL: -O
+        DEBUG_INFORMATION_FORMAT: dwarf
+schemes:
+  SpotiTube:
+    build:
+      targets:
+        SpotiTube: all
+    run:
+      config: Release

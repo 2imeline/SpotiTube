@@ -2,13 +2,15 @@
 import { listen } from '@tauri-apps/api/event';
 import type { Paged, Track } from '../api/types';
 import { addHistoryItem, getPlayerInfo, getWatchQueue, type WatchOptions } from '../api/ytm';
-import { isTauri } from '../api/transport';
+import { call, isTauri } from '../api/transport';
 import { invalidateStream, resolveStream, type Stream } from './streams';
 import { auth } from '../stores/auth.svelte';
 import { settings } from '../stores/settings.svelte';
 import { ui } from '../stores/ui.svelte';
 import { bestThumb } from '../util/thumbs';
 import { needsMatch, resolveTrack } from '../api/match';
+import { isIOS } from '../native/platform';
+import { NativeMedia, type NativeMeta } from '../native/media';
 
 export interface QueueSource {
   title: string;
@@ -71,18 +73,29 @@ class Player {
   private sourceToken = 0;
   private sleepTimer?: ReturnType<typeof setTimeout>;
   private prefetched = '';
+  /** iOS: native AVPlayer engine (null on desktop) */
+  native: NativeMedia | null = null;
+  private preloaded: { qid: number; stream: Stream } | null = null;
+  private preloadToken = 0;
 
   init() {
-    const v = document.createElement('video');
-    v.preload = 'auto';
-    v.playsInline = true;
-    v.className = 'media-el';
-    v.disablePictureInPicture = false;
-    const host = document.createElement('div');
-    host.id = 'media-host';
-    host.style.cssText = 'position:fixed;width:1px;height:1px;left:-10px;top:-10px;overflow:hidden;opacity:0;pointer-events:none';
-    host.appendChild(v);
-    document.body.appendChild(host);
+    let v: HTMLVideoElement;
+    if (isIOS) {
+      // playback, background audio, lock screen and CarPlay are native on iPhone
+      this.native = new NativeMedia();
+      v = this.native as unknown as HTMLVideoElement;
+    } else {
+      v = document.createElement('video');
+      v.preload = 'auto';
+      v.playsInline = true;
+      v.className = 'media-el';
+      v.disablePictureInPicture = false;
+      const host = document.createElement('div');
+      host.id = 'media-host';
+      host.style.cssText = 'position:fixed;width:1px;height:1px;left:-10px;top:-10px;overflow:hidden;opacity:0;pointer-events:none';
+      host.appendChild(v);
+      document.body.appendChild(host);
+    }
     this.el = v;
 
     v.addEventListener('timeupdate', () => {
@@ -107,6 +120,7 @@ class Player {
       this.retries = 0;
       this.consecutiveFails = 0;
       this.registerPlay();
+      this.preloadNext();
     });
     v.addEventListener('pause', () => {
       this.playing = false;
@@ -122,7 +136,8 @@ class Player {
     v.addEventListener('error', () => this.onMediaError());
 
     this.restore();
-    this.setupMediaSession();
+    if (this.native) this.volume = 1; // the phone's volume buttons control loudness
+    else this.setupMediaSession();
     if (isTauri) {
       listen<string>('media-key', (e) => {
         if (e.payload === 'playpause') this.toggle();
@@ -149,6 +164,8 @@ class Player {
     this.index = index;
     this.loading = true;
     this.error = null;
+    this.preloaded = null;
+    this.preloadToken++;
     this.time = startAt;
     this.duration = t.durationSec ?? 0;
     this.buffered = 0;
@@ -180,6 +197,10 @@ class Player {
       if (settings.normalize && s.loudnessDb != null && s.loudnessDb > 0) this.gain = Math.pow(10, -s.loudnessDb / 20);
       this.applyVolume();
       this.pendingSeek = startAt;
+      if (this.native) {
+        this.native.video = s.video;
+        this.native.meta = this.nativeMeta(t, s);
+      }
       this.el.src = s.url;
       if (autoplay) {
         await this.el.play().catch((e) => {
@@ -221,18 +242,112 @@ class Player {
     else this.playing = false;
   }
 
-  private onEnded() {
+  /** returns once the next song is loading (the iOS engine waits for it) */
+  onEnded(): Promise<unknown> {
     if (this.sleepEndOfTrack) {
       this.sleepEndOfTrack = false;
       this.playing = false;
-      return;
+      return Promise.resolve();
     }
     if (this.repeat === 'one') {
       this.el.currentTime = 0;
-      this.el.play();
+      return this.el.play().catch(() => {});
+    }
+    return this.next(true);
+  }
+
+  // ------------------------------------------------------------ iOS native engine
+
+  private nativeMeta(t: Track, s?: Stream): NativeMeta {
+    return {
+      title: t.title,
+      artist: t.artists.map((a) => a.name).join(', '),
+      album: t.album?.name ?? '',
+      artwork: bestThumb(t.thumbnails, 544),
+      duration: t.durationSec ?? s?.duration,
+      qid: t.qid,
+      videoId: t.videoId,
+      mime: s?.mime,
+    };
+  }
+
+  /** what plays after the current song, honouring repeat / sleep timer */
+  get upcoming(): Track | null {
+    if (this.repeat === 'one' || this.sleepEndOfTrack) return null;
+    if (this.index < this.queue.length - 1) return this.queue[this.index + 1];
+    if (this.repeat === 'all' && this.queue.length > 1) return this.queue[0];
+    return null;
+  }
+
+  /** hand the next song to AVQueuePlayer so it starts on time with the phone locked */
+  async preloadNext() {
+    if (!this.native || !this.current) return;
+    const tok = ++this.preloadToken;
+    const nxt = this.upcoming;
+    if (!nxt) {
+      if (this.preloaded) {
+        this.preloaded = null;
+        this.native.preloadNext(null);
+      }
       return;
     }
-    this.next(true);
+    if (this.preloaded?.qid === nxt.qid) return;
+    try {
+      if (needsMatch(nxt) && !(await resolveTrack(nxt))) return;
+      const s = await resolveStream(nxt.videoId, this.video);
+      if (tok !== this.preloadToken || this.upcoming?.qid !== nxt.qid) return;
+      this.preloaded = { qid: nxt.qid!, stream: s };
+      this.native.preloadNext(s.url, this.nativeMeta(nxt, s));
+    } catch (e) {
+      console.warn('preload next', e);
+    }
+  }
+
+  /** AVQueuePlayer moved on to the preloaded song by itself */
+  async onNativeAdvanced(qid: number | null) {
+    const p = this.preloaded;
+    this.preloaded = null;
+    this.preloadToken++;
+    const i = qid == null ? -1 : this.queue.findIndex((t) => t.qid === qid);
+    if (i < 0 || !p || p.qid !== qid) return this.next(true);
+    const t = this.queue[i];
+    this.loadToken++;
+    this.index = i;
+    this.failed = [];
+    this.retries = 0;
+    this.failedFor = t.videoId;
+    this.consecutiveFails = 0;
+    this.stream = p.stream;
+    this.time = 0;
+    this.duration = t.durationSec ?? p.stream.duration ?? 0;
+    this.buffered = 0;
+    this.registered = '';
+    this.loading = false;
+    this.playing = true;
+    this.gain = settings.normalize && p.stream.loudnessDb != null && p.stream.loudnessDb > 0 ? Math.pow(10, -p.stream.loudnessDb / 20) : 1;
+    this.applyVolume();
+    if (this.tabs?.videoId !== t.videoId) this.tabs = null;
+    this.native?.adopt(p.stream.url, this.nativeMeta(t, p.stream));
+    this.updateMetadata();
+    if (this.queue.length - i <= 3) await this.extend();
+    await this.registerPlay();
+    await this.preloadNext();
+    this.save();
+  }
+
+  /** after the page was reloaded while native audio kept playing */
+  adoptNative(st: { src: string; time: number; duration: number; playing: boolean; videoId?: string }) {
+    if (!this.native || !st.src) return;
+    const i = this.queue.findIndex((t) => t.videoId === st.videoId);
+    if (i < 0) return;
+    this.index = i;
+    this.native.adopt(st.src, this.nativeMeta(this.queue[i]));
+    this.time = st.time;
+    if (st.duration) this.duration = st.duration;
+    this.playing = st.playing;
+    this.loading = false;
+    this.updateMetadata();
+    if (st.playing) this.preloadNext();
   }
 
   private onProgress() {
@@ -334,8 +449,9 @@ class Player {
     this.cont = undefined;
     this.source = source ?? null;
     this.failed = [];
-    this.load(startIdx);
+    const loading = this.load(startIdx);
     if (opts.more) this.loadRest(opts.more, token);
+    return loading;
   }
 
   /** Background-load the remaining pages of the current source list. */
@@ -387,7 +503,7 @@ class Player {
       this.failed = [];
       const idx = o.videoId ? Math.max(0, r.tracks.findIndex((t) => t.videoId === o.videoId)) : 0;
       this.tabs = { videoId: r.tracks[idx].videoId, lyricsId: r.lyricsId, relatedId: r.relatedId };
-      this.load(idx);
+      await this.load(idx);
     } catch (e) {
       this.loading = false;
       ui.error(e);
@@ -403,7 +519,7 @@ class Player {
     this.cont = undefined;
     this.source = source ?? { title: t.title };
     this.failed = [];
-    this.load(0);
+    const loading = this.load(0);
     try {
       const r = await getWatchQueue({ videoId: t.videoId, playlistId: t.playlistId });
       if (this.queue[0]?.videoId !== t.videoId || this.queue.length > 1) return;
@@ -416,6 +532,7 @@ class Player {
     } catch {
       /* radio is optional */
     }
+    await loading;
   }
 
   async startRadio(o: { videoId?: string; playlistId?: string; params?: string; title?: string }) {
@@ -439,7 +556,7 @@ class Player {
   jump(i: number) {
     if (i >= 0 && i < this.queue.length) {
       this.failed = [];
-      this.load(i);
+      return this.load(i);
     }
   }
 
@@ -491,7 +608,7 @@ class Player {
 
   previous() {
     if (this.time > 3 || this.index <= 0) return this.seek(0);
-    this.load(this.index - 1);
+    return this.load(this.index - 1);
   }
 
   seek(t: number) {
@@ -564,6 +681,8 @@ class Player {
     clearTimeout(this.sleepTimer);
     this.sleepAt = null;
     this.sleepEndOfTrack = false;
+    // the native timer also fires while the page is asleep
+    if (this.native) call('audio_sleep', typeof minutes === 'number' ? { at: Date.now() + minutes * 60_000 } : {}).catch(() => {});
     if (minutes === 'track') {
       this.sleepEndOfTrack = true;
       ui.toast('Playback will stop at the end of this track');

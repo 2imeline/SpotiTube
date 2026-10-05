@@ -1,4 +1,4 @@
-name: Build Windows
+name: Build
 
 on:
   push:
@@ -16,6 +16,8 @@ concurrency:
 jobs:
   windows:
     runs-on: windows-latest
+    outputs:
+      version: ${{ steps.collect.outputs.version }}
     steps:
       - uses: actions/checkout@v4
 
@@ -56,19 +58,173 @@ jobs:
           name: SpotiTube-windows
           path: out/*
 
-      - name: Publish GitHub release
-        if: startsWith(github.ref, 'refs/tags/v') || github.ref_name == 'main' || github.ref_name == 'claude/upbeat-noether-1v34ms'
+  ios:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Build web UI
+        run: |
+          npm ci
+          npm run build
+          rm -rf ios/SpotiTube/web
+          cp -R dist ios/SpotiTube/web
+
+      - name: Tools
+        run: brew install xcodegen ldid xcbeautify
+
+      - name: Generate Xcode project
+        working-directory: ios
+        run: xcodegen generate
+
+      - name: Build for iPhone (unsigned)
+        run: |
+          set -o pipefail
+          v=$(node -p "require('./package.json').version")
+          echo "VERSION=$v" >> $GITHUB_ENV
+          xcodebuild -project ios/SpotiTube.xcodeproj -scheme SpotiTube -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath build/device \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            MARKETING_VERSION="$v" CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
+            build | xcbeautify
+
+      - name: Package IPA
+        run: |
+          mkdir -p out Payload
+          cp -R build/device/Build/Products/Release-iphoneos/SpotiTube.app Payload/
+          zip -qry "out/SpotiTube-$VERSION.ipa" Payload
+          # TrollStore build: fake-signed with the CarPlay entitlement
+          ldid -Sios/SpotiTube/SpotiTube.entitlements Payload/SpotiTube.app/SpotiTube
+          zip -qry "out/SpotiTube-$VERSION-TrollStore.tipa" Payload
+          ls -la out
+
+      - name: Build for Simulator
+        run: |
+          set -o pipefail
+          xcodebuild -project ios/SpotiTube.xcodeproj -scheme SpotiTube -configuration Release \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build/sim \
+            CODE_SIGN_IDENTITY="-" CODE_SIGNING_REQUIRED=NO MARKETING_VERSION="$VERSION" \
+            build | xcbeautify
+          cd build/sim/Build/Products/Release-iphonesimulator && zip -qry "$GITHUB_WORKSPACE/SpotiTube-sim.zip" SpotiTube.app
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SpotiTube-ios
+          path: out/*
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SpotiTube-ios-simulator
+          path: SpotiTube-sim.zip
+
+  ios-test:
+    needs: ios
+    runs-on: macos-15
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: SpotiTube-ios-simulator
+
+      - name: Run the app in the iPhone simulator
+        run: |
+          unzip -q SpotiTube-sim.zip
+          dev=$(xcrun simctl list devices available -j | python3 -c "
+          import json,sys
+          d=json.load(sys.stdin)['devices']
+          c=[x for k,v in d.items() if 'iOS' in k for x in v if x['name'].startswith('iPhone 16 Pro') or x['name'].startswith('iPhone 16')]
+          c=c or [x for k,v in d.items() if 'iOS' in k for x in v if x['name'].startswith('iPhone')]
+          print(c[0]['udid'])")
+          echo "device $dev"
+          xcrun simctl boot "$dev"
+          xcrun simctl bootstatus "$dev" -b
+          xcrun simctl status_bar "$dev" override --time "9:41" --batteryState charged --batteryLevel 100 --cellularBars 4 || true
+          xcrun simctl install "$dev" SpotiTube.app
+          xcrun simctl launch "$dev" app.spotitube.ios -autotest
+          data=$(xcrun simctl get_app_container "$dev" app.spotitube.ios data)
+          mkdir -p shots
+          for i in $(seq 1 120); do
+            sleep 5
+            if [ $((i % 6)) = 0 ]; then xcrun simctl io "$dev" screenshot "shots/sim-$i.png" >/dev/null 2>&1 || true; fi
+            [ -f "$data/Documents/autotest/done" ] && break
+          done
+          xcrun simctl io "$dev" screenshot shots/sim-final.png || true
+          cp -R "$data/Documents/autotest/." shots/ || true
+          cp "$data/Library/Application Support/spotitube.log" shots/app.log || true
+          echo "----- app log -----"
+          cat shots/app.log || true
+          ls -la shots
+          cd shots && zip -qr ../ios-autotest.zip .
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-autotest
+          path: ios-autotest.zip
+
+      - name: Publish screenshots (CI)
+        if: always()
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.collect.outputs.version }}
-          name: SpotiTube v${{ steps.collect.outputs.version }}
+          tag_name: ios-autotest
+          name: iOS simulator test (CI)
+          prerelease: true
+          make_latest: false
+          target_commitish: ${{ github.sha }}
+          files: ios-autotest.zip
+          body: Screenshots and logs from the latest automated iPhone simulator run. Not a release.
+
+  release:
+    needs: [windows, ios]
+    if: startsWith(github.ref, 'refs/tags/v') || github.ref_name == 'main' || github.ref_name == 'claude/upbeat-noether-1v34ms'
+    runs-on: ubuntu-latest
+    steps:
+      # a version is published once; later pushes of the same version don't replace it
+      - name: Already released?
+        id: exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MSG: ${{ github.event.head_commit.message }}
+        run: |
+          if gh release view "v${{ needs.windows.outputs.version }}" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 && [[ "$MSG" != *"[release]"* ]]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "v${{ needs.windows.outputs.version }} is already published"
+          fi
+
+      - uses: actions/download-artifact@v4
+        if: steps.exists.outputs.skip != 'true'
+        with:
+          path: out
+          pattern: SpotiTube-*
+          merge-multiple: true
+
+      - name: List files
+        if: steps.exists.outputs.skip != 'true'
+        run: rm -f out/SpotiTube-sim.zip; ls -la out
+
+      - name: Publish GitHub release
+        if: steps.exists.outputs.skip != 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.windows.outputs.version }}
+          name: SpotiTube v${{ needs.windows.outputs.version }}
           target_commitish: ${{ github.sha }}
           make_latest: true
           files: out/*
           body: |
-            ## Download
-            - **SpotiTube-${{ steps.collect.outputs.version }}-setup.exe** – installer (recommended, per-user, no admin needed)
-            - **SpotiTube-${{ steps.collect.outputs.version }}-portable.exe** – single executable, no install
-            - **SpotiTube-${{ steps.collect.outputs.version }}.msi** – MSI package for managed installs
+            ## Windows
+            - **SpotiTube-${{ needs.windows.outputs.version }}-setup.exe** – installer (recommended, per-user, no admin needed)
+            - **SpotiTube-${{ needs.windows.outputs.version }}-portable.exe** – single executable, no install
+            - **SpotiTube-${{ needs.windows.outputs.version }}.msi** – MSI package for managed installs
 
             Requires Windows 10/11 (uses the built-in Microsoft Edge WebView2 runtime; the installer fetches it automatically on older systems).
+
+            ## iPhone
+            - **SpotiTube-${{ needs.windows.outputs.version }}.ipa** – sideload with AltStore, SideStore or Sideloadly (they sign it with your Apple ID)
+            - **SpotiTube-${{ needs.windows.outputs.version }}-TrollStore.tipa** – for TrollStore; includes the CarPlay entitlement so SpotiTube also gets its own CarPlay app
+
+            Requires iOS 16 or later. Background playback, lock screen and Control Center controls work with any install; CarPlay always shows SpotiTube in Now Playing.

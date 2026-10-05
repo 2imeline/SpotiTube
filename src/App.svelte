@@ -22,6 +22,9 @@
   import { updater } from './lib/stores/updater.svelte';
   import { initDiscord } from './lib/player/discord.svelte';
   import { spotify } from './lib/stores/spotify.svelte';
+  import MobileApp from './lib/mobile/MobileApp.svelte';
+  import { isIOS, isMobile } from './lib/native/platform';
+  import { initIOS } from './lib/native/ios.svelte';
 
   let sidebarW = $state(+(localStorage.getItem('st.sidebarW') ?? 300) || 300);
   let rightW = $state(+(localStorage.getItem('st.rightW') ?? 320) || 320);
@@ -29,6 +32,7 @@
 
   onMount(() => {
     player.init();
+    if (isIOS) initIOS();
     auth.init().then(() => library.refresh());
     updater.init(settings.autoUpdate);
     initDiscord();
@@ -109,7 +113,9 @@
 
 {#if settings.theme === 'aero'}<AeroBackdrop />{/if}
 
-{#if ui.miniPlayer}
+{#if isMobile}
+  <MobileApp />
+{:else if ui.miniPlayer}
   <div class="app mini"><MiniPlayer /></div>
 {:else if settings.theme === 'aero'}
   <AeroShell />
