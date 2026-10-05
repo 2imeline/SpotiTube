@@ -7,6 +7,7 @@
   import { ui } from '../stores/ui.svelte';
   import { player } from '../player/player.svelte';
   import { trackMenu, type TrackMenuContext } from '../actions';
+  import { isMobile } from '../native/platform';
 
   let {
     track,
@@ -53,7 +54,7 @@
   role="row"
   tabindex="-1"
   ondblclick={() => !unavailable && onplay()}
-  onclick={() => onselect?.()}
+  onclick={() => (isMobile ? !unavailable && onplay() : onselect?.())}
   oncontextmenu={menu}
   onkeydown={(e) => e.key === 'Enter' && onplay()}
 >

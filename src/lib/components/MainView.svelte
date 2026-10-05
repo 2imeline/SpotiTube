@@ -12,6 +12,8 @@
   import History from '../views/History.svelte';
   import Lyrics from '../views/Lyrics.svelte';
   import Settings from '../views/Settings.svelte';
+  import MLibrary from '../mobile/MLibrary.svelte';
+  import { isMobile } from '../native/platform';
   import Profile from '../spotify/Profile.svelte';
   import SpUser from '../spotify/SpUser.svelte';
   import SpPlaylist from '../spotify/SpPlaylist.svelte';
@@ -73,9 +75,9 @@
       {:else if r.name === 'episode'}
         <Podcast id={r.params[0]} episode />
       {:else if r.name === 'library'}
-        <Library />
+        {#if isMobile}<MLibrary />{:else}<Library />{/if}
       {:else if r.name === 'uploads'}
-        <Library mode="uploads" />
+        {#if isMobile}<MLibrary mode="uploads" />{:else}<Library mode="uploads" />{/if}
       {:else if r.name === 'history'}
         <History />
       {:else if r.name === 'lyrics'}

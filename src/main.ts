@@ -1,6 +1,7 @@
 import './styles/app.css';
 import './styles/aero.css';
 import './styles/apple.css';
+import './styles/mobile.css';
 import { mount } from 'svelte';
 import App from './App.svelte';
 import { applySettings, saveSettings } from './lib/stores/settings.svelte';

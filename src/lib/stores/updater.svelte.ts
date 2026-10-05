@@ -1,6 +1,7 @@
 import { listen } from '@tauri-apps/api/event';
 import { call, isTauri } from '../api/transport';
 import { ui } from './ui.svelte';
+import { isIOS } from '../native/platform';
 
 export interface UpdateInfo {
   current: string;
@@ -47,7 +48,7 @@ class Updater {
       try {
         localStorage.setItem(LAST_CHECK, String(Date.now()));
       } catch {}
-      if (this.info.available) ui.toast(`SpotiTube ${this.info.latest} is available — click "Update" to install it`, 'info', 6000);
+      if (this.info.available) ui.toast(isIOS ? `SpotiTube ${this.info.latest} is available — get it in Settings` : `SpotiTube ${this.info.latest} is available — click "Update" to install it`, 'info', 6000);
       else if (!silent) ui.toast(`You're up to date (version ${this.info.current})`);
     } catch (e: any) {
       this.error = String(e?.message ?? e);
@@ -59,6 +60,11 @@ class Updater {
 
   async install() {
     if (!this.info?.available || this.installing) return;
+    if (isIOS) {
+      // sideloaded apps can't replace themselves: hand the IPA to Safari / the sideloading app
+      await call('install_update').catch((e) => ui.error(e));
+      return;
+    }
     const ok = await ui.ask<boolean>({
       kind: 'confirm',
       title: `Update to SpotiTube ${this.info.latest}?`,

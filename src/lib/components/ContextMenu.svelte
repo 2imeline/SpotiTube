@@ -1,7 +1,29 @@
 <script lang="ts">
   import { ui, type MenuAction } from '../stores/ui.svelte';
   import Icon from './Icon.svelte';
+  import Img from './Img.svelte';
   import { tick } from 'svelte';
+  import { fade, fly } from 'svelte/transition';
+  import { isMobile } from '../native/platform';
+  import { artistNames } from '../util/thumbs';
+
+  // ---- phone: bottom action sheet (submenus slide in place)
+  let sheetSub = $state<{ title: string; items: MenuAction[] } | null>(null);
+  $effect(() => {
+    ui.menu;
+    sheetSub = null;
+  });
+  const owner = $derived(ui.menu?.owner as any);
+  const head = $derived(owner && typeof owner === 'object' && 'title' in owner ? owner : null);
+  async function sheetOpen(a: MenuAction) {
+    if (a.disabled) return;
+    if (a.submenu) {
+      sheetSub = { title: a.label, items: await a.submenu() };
+      return;
+    }
+    ui.closeMenu();
+    a.run?.();
+  }
 
   let el: HTMLDivElement | undefined = $state();
   let subEl: HTMLDivElement | undefined = $state();
@@ -58,7 +80,39 @@
   }
 </script>
 
-<svelte:window onmousedown={onDocDown} onkeydown={(e) => e.key === 'Escape' && ui.closeMenu()} onblur={() => ui.closeMenu()} onresize={() => ui.closeMenu()} />
+<svelte:window onmousedown={(e) => !isMobile && onDocDown(e)} onkeydown={(e) => e.key === 'Escape' && ui.closeMenu()} onblur={() => !isMobile && ui.closeMenu()} onresize={() => !isMobile && ui.closeMenu()} />
+
+{#if isMobile}
+  {#if ui.menu}
+    <div class="m-sheet-backdrop" role="presentation" transition:fade={{ duration: 180 }} onclick={() => ui.closeMenu()}></div>
+    <div class="m-sheet" role="menu" tabindex="-1" transition:fly={{ y: 500, duration: 240, opacity: 1 }}>
+      <div class="m-sheet-grab"></div>
+      {#if head && !sheetSub}
+        <div class="m-sheet-head">
+          <Img thumbs={head.thumbnails} size={96} class={head.type === 'artist' ? 'round' : ''} />
+          <div class="m">
+            <div class="a">{head.title}</div>
+            <div class="b">{head.artists?.length ? artistNames(head.artists) : head.subtitle ?? ''}</div>
+          </div>
+        </div>
+      {/if}
+      {#if sheetSub}
+        <button class="m-sheet-item back" onclick={() => (sheetSub = null)}><Icon name="chevronLeft" size={22} /><span>{sheetSub.title}</span></button>
+      {/if}
+      <div class="m-sheet-list">
+        {#each sheetSub?.items ?? ui.menu.actions as a}
+          {#if !a.divider}
+            <button class="m-sheet-item" class:danger={a.danger} disabled={a.disabled} onclick={() => sheetOpen(a)}>
+              {#if a.icon}<Icon name={a.icon} size={22} />{:else}<span style="width:22px"></span>{/if}<span>{a.label}</span>
+              {#if a.submenu}<Icon name="chevronRight" size={16} />{/if}
+            </button>
+          {/if}
+        {/each}
+      </div>
+      <button class="m-sheet-cancel" onclick={() => ui.closeMenu()}>Close</button>
+    </div>
+  {/if}
+{:else}
 
 {#if ui.menu}
   <div class="ctx-menu" bind:this={el} style="left:{pos.x}px;top:{pos.y}px" role="menu" tabindex="-1" oncontextmenu={(e) => e.preventDefault()}>
@@ -84,4 +138,5 @@
       {/each}
     </div>
   {/if}
+{/if}
 {/if}

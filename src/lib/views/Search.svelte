@@ -12,6 +12,10 @@
   import { player } from '../player/player.svelte';
   import { auth } from '../stores/auth.svelte';
   import { artistNames } from '../util/thumbs';
+  import { isMobile } from '../native/platform';
+  import { settings } from '../stores/settings.svelte';
+  import PageHead from '../mobile/PageHead.svelte';
+  import SearchBox from '../components/SearchBox.svelte';
 
   const FILTERS: [SearchFilter | '', string][] = [
     ['', 'All'],
@@ -98,6 +102,10 @@
 
 <div class="view">
   <div class="view-pad" style="padding-top:16px">
+    {#if isMobile}
+      {#if !q}<PageHead title="Search" large={settings.theme === 'apple'} />{/if}
+      <div class="m-search-box"><SearchBox variant="mobile" placeholder={settings.theme === 'apple' ? 'Artists, Songs, Lyrics, and More' : 'What do you want to listen to?'} /></div>
+    {/if}
     {#if !q}
       <h2 class="page-title" style="font-size:24px">Browse all</h2>
       {#if !browse}

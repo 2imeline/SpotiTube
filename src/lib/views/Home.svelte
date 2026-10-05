@@ -12,6 +12,9 @@
   import { player } from '../player/player.svelte';
   import { ui } from '../stores/ui.svelte';
   import { cardMenu } from '../actions';
+  import { isMobile } from '../native/platform';
+  import { settings } from '../stores/settings.svelte';
+  import PageHead from '../mobile/PageHead.svelte';
 
   let page = $state.raw<BrowsePage | null>(null);
   let shelves = $state.raw<Shelf[]>([]);
@@ -75,8 +78,10 @@
 <div class="view">
   <div class="view-bg" style="background:linear-gradient(rgba(var(--accent-rgb),.22),transparent);height:280px"></div>
   <div class="view-pad" style="padding-top:12px">
-    {#if chips.length}
-      <div class="chips" style="padding:8px 0 0">
+    {#if isMobile && settings.theme !== 'spotify'}<PageHead title="Home" large={settings.theme === 'apple'} />{/if}
+    {#if chips.length || (isMobile && settings.theme === 'spotify')}
+      <div class="chips m-home-chips" style="padding:8px 0 0">
+        {#if isMobile && settings.theme === 'spotify'}<PageHead />{/if}
         <button class="chip" class:active={!chip} onclick={() => (chip = undefined)}>All</button>
         {#each chips as c}
           <button class="chip" class:active={chip === c.params} onclick={() => (chip = chip === c.params ? undefined : c.params)}>{c.title}</button>

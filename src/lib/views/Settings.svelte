@@ -12,6 +12,7 @@
   import { openExternal } from '../actions';
   import type { SpUser } from '../api/spotify';
   import { onMount } from 'svelte';
+  import { isMobile, isIOS } from '../native/platform';
   import { call } from '../api/transport';
 
   const REDIRECT = 'http://127.0.0.1:43821/callback';
@@ -189,12 +190,14 @@
         {/each}
       </div>
     </ColorWheel>
+    {#if !isMobile}
     <div class="set-row">
       <div class="l"><div class="t">Zoom</div><div class="d">Scale the whole interface.</div></div>
       <select class="input" value={String(settings.zoom)} onchange={(e) => set('zoom', +(e.currentTarget as HTMLSelectElement).value)}>
         {#each [0.8, 0.9, 1, 1.1, 1.25, 1.5] as z}<option value={String(z)}>{Math.round(z * 100)}%</option>{/each}
       </select>
     </div>
+    {/if}
     <div class="set-row">
       <div class="l"><div class="t">Reduce motion</div><div class="d">Disable animations and transitions.</div></div>
       <button class="toggle" class:on={settings.reduceMotion} aria-label="Reduce motion" onclick={() => set('reduceMotion', !settings.reduceMotion)}></button>
@@ -221,15 +224,18 @@
       <div class="l"><div class="t">I have YouTube Music Premium</div><div class="d">Use the YouTube Music web client for streams first (Premium accounts get higher quality audio).</div></div>
       <button class="toggle" class:on={settings.premium} aria-label="Premium" onclick={() => set('premium', !settings.premium)}></button>
     </div>
+    {#if !isMobile}
     <div class="set-row">
       <div class="l"><div class="t">Media keys</div><div class="d">Control playback with the keyboard's play/pause, next and previous keys.</div></div>
       <button class="toggle" class:on={settings.mediaKeys} aria-label="Media keys" onclick={() => set('mediaKeys', !settings.mediaKeys)}></button>
     </div>
+    {/if}
     <div class="set-row">
       <div class="l"><div class="t">Synced lyrics from LRCLIB</div><div class="d">When YouTube Music has no time-synced lyrics, look them up on lrclib.net.</div></div>
       <button class="toggle" class:on={settings.lrclib} aria-label="LRCLIB" onclick={() => set('lrclib', !settings.lrclib)}></button>
     </div>
 
+    {#if !isMobile}
     <h2>Discord</h2>
     <div class="set-row">
       <div class="l"><div class="t">Show what I'm listening to on Discord</div><div class="d">Rich presence with the song, artist, artwork and a live progress bar. The Discord desktop app must be running.</div></div>
@@ -256,6 +262,7 @@
         <div class="l"><div class="t">Custom Discord application ID</div><div class="d">Optional. The app's name is what shows after "Listening to" — create an application called e.g. "SpotiTube" at discord.com/developers and paste its Application ID here. Leave empty for "YouTube Music".</div></div>
         <input class="input" style="width:200px" placeholder="Application ID" value={settings.discordClientId} onchange={(e) => set('discordClientId', (e.currentTarget as HTMLInputElement).value.trim())} />
       </div>
+    {/if}
     {/if}
 
     <h2 id="spotify-settings">Spotify</h2>
@@ -338,11 +345,11 @@
           {#if updater.installing}
             Downloading update… {Math.round(updater.progress * 100)}%
           {:else if updater.available}
-            Version {updater.info?.latest} is available. It installs in place and SpotiTube reopens by itself.
+            {#if isIOS}Version {updater.info?.latest} is available. Download the new IPA and install it with your sideloading app (your data is kept).{:else}Version {updater.info?.latest} is available. It installs in place and SpotiTube reopens by itself.{/if}
           {:else if updater.info}
             You're on the latest version.
           {:else}
-            Check GitHub for a newer version and install it without re-downloading anything yourself.
+            {#if isIOS}Check GitHub for a newer version of the iPhone app.{:else}Check GitHub for a newer version and install it without re-downloading anything yourself.{/if}
           {/if}
         </div>
         {#if updater.installing}
@@ -350,7 +357,7 @@
         {/if}
       </div>
       {#if updater.available}
-        <button class="pill-btn accent" onclick={() => updater.install()} disabled={updater.installing}>{updater.installing ? 'Updating…' : 'Update now'}</button>
+        <button class="pill-btn accent" onclick={() => updater.install()} disabled={updater.installing}>{updater.installing ? 'Updating…' : isIOS ? 'Download' : 'Update now'}</button>
       {:else}
         <button class="pill-btn outline" onclick={() => updater.check()} disabled={updater.checking}>{updater.checking ? 'Checking…' : 'Check for updates'}</button>
       {/if}

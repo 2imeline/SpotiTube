@@ -1,3 +1,4 @@
+import AVKit
 import UIKit
 
 /// Native implementations of the commands the web app invokes
@@ -51,6 +52,9 @@ enum Commands {
             return nil
         case "share":
             Share.present(text: a["text"] as? String, url: a["url"] as? String)
+            return nil
+        case "show_route_picker":
+            RoutePicker.show()
             return nil
         case "haptic":
             Haptics.play(a["style"] as? String ?? "light")
@@ -111,6 +115,26 @@ enum Commands {
 
         default:
             throw BridgeError("unknown command \(cmd)")
+        }
+    }
+}
+
+/// AirPlay / Bluetooth output picker (Spotify's "devices" button).
+enum RoutePicker {
+    private static let picker: AVRoutePickerView = {
+        let p = AVRoutePickerView(frame: CGRect(x: -100, y: -100, width: 1, height: 1))
+        p.prioritizesVideoDevices = false
+        return p
+    }()
+
+    @MainActor
+    static func show() {
+        guard let host = Engine.shared.host?.view else { return }
+        if picker.superview !== host { host.addSubview(picker) }
+        // AVRoutePickerView has no public "present": tap its internal button
+        for case let b as UIButton in picker.subviews {
+            b.sendActions(for: .touchUpInside)
+            return
         }
     }
 }
