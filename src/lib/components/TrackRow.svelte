@@ -8,6 +8,7 @@
   import { player } from '../player/player.svelte';
   import { trackMenu, type TrackMenuContext } from '../actions';
   import { isMobile } from '../native/platform';
+  import { longpress } from '../util/longpress';
 
   let {
     track,
@@ -56,6 +57,7 @@
   ondblclick={() => !unavailable && onplay()}
   onclick={() => (isMobile ? !unavailable && onplay() : onselect?.())}
   oncontextmenu={menu}
+  use:longpress={menu}
   onkeydown={(e) => e.key === 'Enter' && onplay()}
 >
   <div class="num">

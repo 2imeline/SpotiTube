@@ -159,6 +159,17 @@ jobs:
             fi
           done
           xcrun simctl io "$dev" screenshot shots/sim-final.png
+          # background playback: leave the app while a song ends, then come back
+          for i in $(seq 1 12); do [ -f "$data/Documents/autotest/bg" ] && break; sleep 5; done
+          if [ -f "$data/Documents/autotest/bg" ]; then
+            echo "sending SpotiTube to the background"
+            xcrun simctl launch "$dev" com.apple.Preferences
+            sleep 75
+            xcrun simctl io "$dev" screenshot shots/sim-background.png
+            xcrun simctl launch "$dev" app.spotitube.ios
+            sleep 8
+            xcrun simctl io "$dev" screenshot shots/sim-back.png
+          fi
           cp -R "$data/Documents/autotest/." shots/
           cp "$data/Library/Application Support/spotitube.log" shots/app.log
           xcrun simctl spawn "$dev" log show --last 15m --style compact --predicate 'process == "SpotiTube" OR subsystem CONTAINS "WebKit" AND process == "SpotiTube"' > shots/oslog.txt 2>&1

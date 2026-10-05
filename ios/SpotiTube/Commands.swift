@@ -83,6 +83,9 @@ enum Commands {
         case "autotest_done":
             Autotest.done()
             return nil
+        case "autotest_bg":
+            try? Data("bg".utf8).write(to: Autotest.dir.appendingPathComponent("bg"))
+            return nil
 
         // ---- desktop-only features
         case "set_media_keys", "discord_configure", "discord_set_activity":

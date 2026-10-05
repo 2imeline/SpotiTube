@@ -361,6 +361,13 @@ html.mobile .chip.active {
   padding: calc(var(--sat) + 8px) var(--m-pad) 10px !important;
   background: var(--m-bg);
 }
+/* pages without their own phone header: clear the status bar (+ back button) */
+html.mobile .m-app[data-root='false'] .view > .view-pad:first-child {
+  padding-top: calc(var(--sat) + 52px);
+}
+html.mobile .m-app[data-root='true'] .view > .view-pad:first-child {
+  padding-top: calc(var(--sat) + 12px);
+}
 html.mobile .view-pad:has(> .m-home-chips),
 html.mobile .view-pad:has(> .m-head),
 html.mobile .view-pad:has(> .m-search-box) {
@@ -747,9 +754,18 @@ html.mobile .set-row select.input,
 html.mobile .set-row .input {
   max-width: 46vw;
 }
-html.mobile .theme-pick,
-html.mobile .themes {
-  grid-template-columns: 1fr 1fr !important;
+html.mobile .theme-cards {
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 8px !important;
+}
+html.mobile .theme-card {
+  padding: 6px !important;
+}
+html.mobile .theme-card .desc {
+  display: none;
+}
+html.mobile .theme-card .name {
+  font-size: 12px;
 }
 html.mobile .acct-tiles,
 html.mobile .friend-list {

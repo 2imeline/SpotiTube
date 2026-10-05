@@ -7,6 +7,7 @@
   import { cardRoute } from '../api/ytm';
   import { ui } from '../stores/ui.svelte';
   import { go } from '../stores/router.svelte';
+  import { longpress } from '../util/longpress';
 
   let { card, onRemoved }: { card: Card; onRemoved?: () => void } = $props();
   const round = $derived(card.type === 'artist' || card.type === 'profile');
@@ -36,6 +37,7 @@
   onclick={() => openCard(card)}
   onkeydown={(e) => e.key === 'Enter' && openCard(card)}
   oncontextmenu={ctx}
+  use:longpress={ctx}
 >
   <div class="card-img" class:wide={card.wide}>
     <Img thumbs={card.thumbnails} size={card.wide ? 300 : 180} alt="" icon={round ? 'user' : 'music'} />

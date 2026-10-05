@@ -161,6 +161,7 @@ final class AudioEngine: NSObject {
         observe(it)
         current = it
         lastBuffered = -1
+        Log.write("load \"\(meta["title"] as? String ?? "?")\"\(video ? " (video)" : "")")
         player.insert(it.item, after: nil)
         player.volume = volume
         videoView.playerLayer.player = video && foreground ? player : nil
@@ -332,6 +333,7 @@ final class AudioEngine: NSObject {
     private func currentItemChanged(_ item: AVPlayerItem?) {
         guard let n = next, item === n.item else { return }
         // AVQueuePlayer moved on to the song the web player queued in advance
+        Log.write("advanced to queued \"\(n.meta["title"] as? String ?? "?")\" (app \(foreground ? "foreground" : "background"))")
         current?.observers = []
         current = n
         next = nil
@@ -340,7 +342,9 @@ final class AudioEngine: NSObject {
         videoView.playerLayer.player = n.video && foreground ? player : nil
         Task { @MainActor in
             do {
+                let t0 = Date()
                 try await Engine.shared.call("advanced", ["src": n.src, "qid": n.meta["qid"] ?? NSNull()])
+                Log.write("web player synced after advance in \(Int(Date().timeIntervalSince(t0) * 1000)) ms")
             } catch {
                 Log.write("advanced callback failed: \(error.localizedDescription)")
             }
@@ -357,9 +361,12 @@ final class AudioEngine: NSObject {
             guard let cur = self.current, item === cur.item else { return }
             // with a queued next song AVQueuePlayer continues by itself
             if self.next != nil { return }
+            Log.write("song ended without a queued next song (app \(self.foreground ? "foreground" : "background"))")
             Task { @MainActor in
                 do {
+                    let t0 = Date()
                     try await Engine.shared.call("ended")
+                    Log.write("web player handled the end in \(Int(Date().timeIntervalSince(t0) * 1000)) ms")
                 } catch {
                     Log.write("ended callback failed: \(error.localizedDescription)")
                 }
@@ -461,6 +468,7 @@ final class AudioEngine: NSObject {
     private func remote(_ action: String, _ extra: [String: Any] = [:]) {
         var args = extra
         args["action"] = action
+        Log.write("remote command \(action)")
         Task { @MainActor in
             do {
                 try await Engine.shared.call("remote", args)

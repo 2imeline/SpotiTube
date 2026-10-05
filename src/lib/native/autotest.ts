@@ -118,4 +118,19 @@ export async function runAutotest() {
     log(`autotest error: ${e?.message ?? e}\n${e?.stack ?? ''}`);
   }
   await call('autotest_done').catch(() => {});
+
+  // background test: CI sends the app to the background while a song ends,
+  // the native queue + web callbacks must carry on to the following songs
+  try {
+    if (player.current && player.duration > 30) {
+      if (!player.playing) await player.toggle();
+      await sleep(3000);
+      player.seek(Math.max(0, player.duration - 25));
+      await sleep(1500);
+      state('before background');
+      await call('autotest_bg');
+    }
+  } catch (e: any) {
+    log(`background test error: ${e?.message ?? e}`);
+  }
 }
