@@ -74,8 +74,6 @@ targets:
         INFOPLIST_FILE: SpotiTube/Info.plist
         CODE_SIGN_ENTITLEMENTS: SpotiTube/SpotiTube.entitlements
         SWIFT_OPTIMIZATION_LEVEL: -O
-        # never require WebKit's old Swift overlay dylib (gone from iOS 18 runtimes)
-        OTHER_LDFLAGS: ["-weak-lswiftWebKit"]
         DEBUG_INFORMATION_FORMAT: dwarf
 schemes:
   SpotiTube:
