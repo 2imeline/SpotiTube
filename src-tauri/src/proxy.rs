@@ -34,7 +34,10 @@ pub fn start() -> ProxyInfo {
         .spawn(move || {
             let client = reqwest::blocking::Client::builder()
                 .connect_timeout(Duration::from_secs(15))
-                .timeout(None)
+                // blocking reqwest applies this to the headers and to every body
+                // read: a connection that goes silent mid-song errors out (the
+                // player then re-requests the range) instead of hanging forever
+                .timeout(Duration::from_secs(20))
                 .build()
                 .expect("http client");
             for req in server.incoming_requests() {
@@ -127,13 +130,27 @@ fn handle(req: Request, client: &reqwest::blocking::Client, token: &str) {
         .map(|h| h.value.as_str().to_string());
     let range = bounded_range(range_in.as_deref());
 
-    let upstream = client
-        .get(&target)
-        .header("User-Agent", ua)
-        .header("Range", range)
-        .header("Origin", "https://www.youtube.com")
-        .header("Referer", "https://www.youtube.com/")
-        .send();
+    // network hiccups and 5xx are retried with backoff; 4xx (expired or
+    // refused URL) goes straight back so the player resolves a fresh stream
+    let mut attempt = 0;
+    let upstream = loop {
+        let r = client
+            .get(&target)
+            .header("User-Agent", &ua)
+            .header("Range", &range)
+            .header("Origin", "https://www.youtube.com")
+            .header("Referer", "https://www.youtube.com/")
+            .send();
+        let transient = match &r {
+            Ok(resp) => resp.status().is_server_error(),
+            Err(_) => true,
+        };
+        if !transient || attempt >= 3 {
+            break r;
+        }
+        attempt += 1;
+        thread::sleep(Duration::from_millis(500 << (attempt - 1)));
+    };
 
     let upstream = match upstream {
         Ok(r) => r,
