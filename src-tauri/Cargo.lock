@@ -3523,7 +3523,7 @@ dependencies = [
 
 [[package]]
 name = "spotitube"
-version = "1.6.0"
+version = "1.6.1"
 dependencies = [
  "fastrand",
  "parking_lot",

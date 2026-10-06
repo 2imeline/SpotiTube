@@ -73,6 +73,8 @@ class Player {
   private sourceToken = 0;
   private sleepTimer?: ReturnType<typeof setTimeout>;
   private prefetched = '';
+  private stallTimer?: ReturnType<typeof setTimeout>;
+  private stalled = false;
   /** iOS: native AVPlayer engine (null on desktop) */
   native: NativeMedia | null = null;
   private preloaded: { qid: number; stream: Stream } | null = null;
@@ -117,6 +119,8 @@ class Player {
     v.addEventListener('playing', () => {
       this.playing = true;
       this.loading = false;
+      this.stalled = false;
+      clearTimeout(this.stallTimer);
       this.retries = 0;
       this.consecutiveFails = 0;
       this.registerPlay();
@@ -124,10 +128,20 @@ class Player {
     });
     v.addEventListener('pause', () => {
       this.playing = false;
+      this.loading = false;
+      clearTimeout(this.stallTimer);
       this.save();
     });
-    v.addEventListener('waiting', () => (this.loading = true));
-    v.addEventListener('canplay', () => (this.loading = false));
+    v.addEventListener('waiting', () => {
+      this.loading = true;
+      // stuck buffering (dropped connection, expired link): reload with a fresh stream
+      clearTimeout(this.stallTimer);
+      this.stallTimer = setTimeout(() => this.loading && !this.el.paused && this.onStall('buffering'), 12_000);
+    });
+    v.addEventListener('canplay', () => {
+      this.loading = false;
+      clearTimeout(this.stallTimer);
+    });
     v.addEventListener('progress', () => {
       const b = v.buffered;
       if (b.length) this.buffered = b.end(b.length - 1);
@@ -146,6 +160,23 @@ class Player {
         else if (e.payload === 'stop') this.pause();
       });
     }
+    // silent stop: "playing" but the position doesn't move
+    let lastT = -1;
+    let still = 0;
+    setInterval(() => {
+      if (!this.playing || this.loading || this.el.paused || !this.el.src || document.hidden) {
+        still = 0;
+        lastT = -1;
+        return;
+      }
+      const t = this.native ? this.native.reportedTime : this.el.currentTime;
+      still = Math.abs(t - lastT) < 0.05 ? still + 1 : 0;
+      lastT = t;
+      if (still >= 4) {
+        still = 0;
+        this.onStall('stopped');
+      }
+    }, 4000);
     window.addEventListener('beforeunload', () => this.save());
     setInterval(() => this.playing && this.save(), 10_000);
   }
@@ -219,6 +250,28 @@ class Player {
       // skip unplayable tracks, but don't race through the whole queue if streaming is broken
       if (autoplay && index < this.queue.length - 1 && this.consecutiveFails < 3) setTimeout(() => token === this.loadToken && this.next(true), 1200);
     }
+  }
+
+  /** reload the current song where it stopped, with a freshly resolved stream */
+  private onStall(why: string) {
+    const t = this.current;
+    if (!t || !this.el.src) return;
+    console.warn('playback stalled:', why);
+    clearTimeout(this.stallTimer);
+    if (this.retries >= 3) {
+      // repeated stalls: stop cleanly so the play button works again
+      this.retries = 0;
+      this.stalled = true;
+      this.loading = false;
+      this.el.pause();
+      this.playing = false;
+      ui.toast(`Playback of "${t.title}" stalled. Tap play to retry.`, 'error');
+      return;
+    }
+    this.retries++;
+    invalidateStream(t.videoId);
+    if (t.counterpart) invalidateStream(t.counterpart.videoId);
+    this.load(this.index, true, this.el.currentTime || this.time);
   }
 
   private onMediaError() {
@@ -585,9 +638,18 @@ class Player {
 
   toggle() {
     if (!this.current) return;
-    if (!this.el.src || this.error) return this.load(this.index, true, this.time);
+    if (!this.el.src || this.error || (this.stalled && this.el.paused)) {
+      this.stalled = false;
+      return this.load(this.index, true, this.el.currentTime || this.time);
+    }
     if (this.el.paused) this.el.play().catch((e) => e?.name !== 'AbortError' && this.onMediaError());
-    else this.el.pause();
+    else {
+      // pausing while stuck buffering: stop for real and reload on the next play
+      if (this.loading) this.stalled = true;
+      this.el.pause();
+      this.playing = false;
+      this.loading = false;
+    }
   }
   play() {
     if (this.el.paused) this.toggle();

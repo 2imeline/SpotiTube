@@ -69,6 +69,10 @@ export class NativeMedia extends EventTarget {
     const t = this._time + ((performance.now() - this._at) / 1000) * this._rate;
     return isFinite(this._duration) ? Math.min(t, this._duration) : t;
   }
+  /** last position the native player reported (no interpolation), for stall detection */
+  get reportedTime() {
+    return this._time;
+  }
   set currentTime(t: number) {
     this._time = Math.max(0, t);
     this._at = performance.now();

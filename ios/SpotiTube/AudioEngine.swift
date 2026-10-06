@@ -46,7 +46,7 @@ final class AudioEngine: NSObject {
     private var artwork: MPMediaItemArtwork?
     private var statusObs: NSKeyValueObservation?
     private var itemObs: NSKeyValueObservation?
-    private var wasPlaying = false
+    private var lastStatus: AVPlayer.TimeControlStatus = .paused
     var videoRect: CGRect?
 
     // MARK: setup
@@ -312,16 +312,16 @@ final class AudioEngine: NSObject {
     }
 
     private func statusChanged(_ s: AVPlayer.TimeControlStatus) {
+        let prev = lastStatus
+        lastStatus = s
         switch s {
         case .playing:
-            wasPlaying = true
             Engine.shared.audioEvent("play")
             Engine.shared.audioEvent("playing")
         case .paused:
-            if wasPlaying {
-                wasPlaying = false
-                Engine.shared.audioEvent("pause", ["time": currentTime])
-            }
+            // also after buffering that never got going (a stall, a failed
+            // load), so the page doesn't keep showing a spinner
+            if prev != .paused { Engine.shared.audioEvent("pause", ["time": currentTime]) }
         case .waitingToPlayAtSpecifiedRate:
             if player.reasonForWaitingToPlay != .noItemToPlay { Engine.shared.audioEvent("waiting") }
         @unknown default:

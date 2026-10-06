@@ -20,6 +20,8 @@ final class StreamLoader: NSObject, AVAssetResourceLoaderDelegate, URLSessionDat
         var offset: Int64 = 0
         var end: Int64 = 0
         var task: URLSessionDataTask?
+        /// consecutive failed attempts for the current chunk
+        var attempts = 0
         init(_ lr: AVAssetResourceLoadingRequest) { self.lr = lr }
     }
 
@@ -95,6 +97,22 @@ final class StreamLoader: NSObject, AVAssetResourceLoaderDelegate, URLSessionDat
         t.resume()
     }
 
+    /// Network hiccups (Wi-Fi ↔ cellular, a dropped connection, a 5xx) retry
+    /// the same chunk with backoff instead of failing the whole song.
+    private func retry(_ r: Req, _ error: Error) {
+        guard r.attempts < 3, byRequest[ObjectIdentifier(r.lr)] != nil, !r.lr.isCancelled, !r.lr.isFinished else {
+            done(r, error)
+            return
+        }
+        r.attempts += 1
+        let delay = 0.5 * pow(2, Double(r.attempts - 1))
+        Log.write("stream chunk failed (\(error.localizedDescription)), retry \(r.attempts) in \(delay)s")
+        queue.asyncAfter(deadline: .now() + delay) { [weak self] in
+            guard let self, self.byRequest[ObjectIdentifier(r.lr)] != nil, !r.lr.isCancelled, !r.lr.isFinished else { return }
+            self.start(r)
+        }
+    }
+
     private func done(_ r: Req, _ error: Error? = nil) {
         byRequest.removeValue(forKey: ObjectIdentifier(r.lr))
         guard !r.lr.isFinished, !r.lr.isCancelled else { return }
@@ -116,7 +134,9 @@ final class StreamLoader: NSObject, AVAssetResourceLoaderDelegate, URLSessionDat
         }
         if h.statusCode >= 400 {
             byTask.removeValue(forKey: dataTask.taskIdentifier)
-            done(r, NSError(domain: "SpotiTubeStream", code: h.statusCode, userInfo: [NSLocalizedDescriptionKey: "HTTP \(h.statusCode)"]))
+            let err = NSError(domain: "SpotiTubeStream", code: h.statusCode, userInfo: [NSLocalizedDescriptionKey: "HTTP \(h.statusCode)"])
+            // 4xx means the URL expired or was refused: let the page fetch a new one
+            if h.statusCode >= 500 { retry(r, err) } else { done(r, err) }
             completionHandler(.cancel)
             return
         }
@@ -144,6 +164,7 @@ final class StreamLoader: NSObject, AVAssetResourceLoaderDelegate, URLSessionDat
         guard let r = byTask[dataTask.taskIdentifier], let dr = r.lr.dataRequest, !r.lr.isCancelled, !r.lr.isFinished else { return }
         dr.respond(with: data)
         r.offset += Int64(data.count)
+        r.attempts = 0
     }
 
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
@@ -151,7 +172,7 @@ final class StreamLoader: NSObject, AVAssetResourceLoaderDelegate, URLSessionDat
         if r.lr.isCancelled || r.lr.isFinished { return }
         if let error {
             if (error as NSError).code == NSURLErrorCancelled { return }
-            done(r, error)
+            retry(r, error)
             return
         }
         let more = r.offset <= r.end && (contentLength == 0 || r.offset < contentLength)
