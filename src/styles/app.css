@@ -1123,6 +1123,33 @@ img {
 .tracklist.no-album {
   --cols: 16px minmax(120px, 4fr) minmax(80px, 1fr);
 }
+.tracklist.with-added {
+  --cols: 16px minmax(120px, 6fr) minmax(120px, 4fr) minmax(100px, 3fr) minmax(80px, 1fr);
+  container-type: inline-size;
+}
+.tracklist.with-added.no-album {
+  --cols: 16px minmax(120px, 6fr) minmax(100px, 3fr) minmax(80px, 1fr);
+}
+.t-added {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* not enough room: drop the column, like Spotify */
+@container (max-width: 720px) {
+  .tracklist.with-added .added-h,
+  .tracklist.with-added .t-added {
+    display: none;
+  }
+  .tracklist.with-added > .tl-head,
+  .tracklist.with-added .track {
+    grid-template-columns: 16px minmax(120px, 6fr) minmax(120px, 4fr) minmax(80px, 1fr);
+  }
+  .tracklist.with-added.no-album > .tl-head,
+  .tracklist.with-added.no-album .track {
+    grid-template-columns: 16px minmax(120px, 4fr) minmax(80px, 1fr);
+  }
+}
 .tracklist.compact {
   padding: 0;
 }
@@ -1315,6 +1342,11 @@ img {
   font-size: 10px;
   font-weight: 700;
   flex-shrink: 0;
+  margin-right: 6px;
+}
+/* flex rows already have a gap */
+.t-sub .ebadge {
+  margin-right: 2px;
 }
 .rank {
   display: flex;

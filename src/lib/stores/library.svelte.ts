@@ -3,9 +3,26 @@ import { matchTrack, needsMatch } from '../api/match';
 import { LIBRARY, getLibrary, loadAll, rateSong, ratePlaylist, subscribe, unsubscribe, sendFeedback } from '../api/ytm';
 import { auth } from './auth.svelte';
 import { ui } from './ui.svelte';
+import { added } from './added.svelte';
+
+const PINS = 'st.pins';
+
+function loadPins(): string[] {
+  try {
+    const v = JSON.parse(localStorage.getItem(PINS) ?? '[]');
+    return Array.isArray(v) ? v.filter((x) => typeof x === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+/** sidebar identity of a library item */
+export const pinKey = (c: Card) => c.browseId ?? c.playlistId ?? '';
 
 class Library {
   playlists = $state.raw<Card[]>([]);
+  /** items pinned to the top of Your Library (newest pin first) */
+  pins = $state<string[]>(loadPins());
   loading = $state(false);
   likes = $state<Record<string, LikeStatus>>({});
   saved = $state<Record<string, boolean>>({});
@@ -35,6 +52,31 @@ class Library {
     }
   }
 
+  isPinned(c: Card) {
+    const k = pinKey(c);
+    return !!k && this.pins.includes(k);
+  }
+
+  togglePin(c: Card) {
+    const k = pinKey(c);
+    if (!k) return;
+    const on = !this.pins.includes(k);
+    if (on && this.pins.length >= 30) return ui.toast('You can pin up to 30 items');
+    this.pins = on ? [k, ...this.pins] : this.pins.filter((x) => x !== k);
+    try {
+      localStorage.setItem(PINS, JSON.stringify(this.pins));
+    } catch {}
+    ui.toast(on ? `Pinned "${c.title}"` : `Unpinned "${c.title}"`);
+  }
+
+  /** pinned items first (in pin order), the rest unchanged */
+  withPins(list: Card[]): Card[] {
+    if (!this.pins.length) return list;
+    const rank = new Map(this.pins.map((k, i) => [k, i]));
+    const pinned = list.filter((c) => rank.has(pinKey(c))).sort((a, b) => rank.get(pinKey(a))! - rank.get(pinKey(b))!);
+    return pinned.length ? [...pinned, ...list.filter((c) => !rank.has(pinKey(c)))] : list;
+  }
+
   likeOf(t: Pick<Track, 'videoId' | 'likeStatus'>): LikeStatus {
     return this.likes[t.videoId] ?? t.likeStatus ?? 'INDIFFERENT';
   }
@@ -53,6 +95,7 @@ class Library {
         this.likes[id] = status;
       }
       await rateSong(id, status);
+      if (status === 'LIKE') added.record('LM', [id]);
       ui.toast(status === 'LIKE' ? 'Added to Liked Music' : status === 'DISLIKE' ? 'Disliked' : 'Removed from Liked Music');
     } catch (e) {
       this.likes[t.videoId] = prev;

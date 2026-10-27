@@ -14,6 +14,7 @@
     track,
     n,
     showAlbum = true,
+    added,
     showArt = true,
     current = false,
     selected = false,
@@ -24,6 +25,8 @@
     track: Track;
     n: number;
     showAlbum?: boolean;
+    /** "Date added" column text; undefined = no column */
+    added?: string;
     showArt?: boolean;
     current?: boolean;
     selected?: boolean;
@@ -93,6 +96,9 @@
     <div class="t-album">
       {#if track.album?.id}<a href="#/" onclick={(e) => link(e, `/album/${track.album!.id}`)}>{track.album.name}</a>{:else}{track.album?.name ?? track.views ?? ''}{/if}
     </div>
+  {/if}
+  {#if added !== undefined}
+    <div class="t-added">{added}</div>
   {/if}
   <div class="t-end">
     {#if track.type !== 'episode'}

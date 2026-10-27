@@ -18,7 +18,8 @@ import {
 import { player } from './player/player.svelte';
 import { go } from './stores/router.svelte';
 import { ui, type MenuAction } from './stores/ui.svelte';
-import { library } from './stores/library.svelte';
+import { library, pinKey } from './stores/library.svelte';
+import { added } from './stores/added.svelte';
 import { auth } from './stores/auth.svelte';
 import { updater } from './stores/updater.svelte';
 import { call } from './api/transport';
@@ -179,6 +180,7 @@ export async function addTracksToPlaylist(playlistId: string, title: string, vid
       if (!ok) return;
       res = await addToPlaylist(playlistId, videoIds, true, sourcePlaylist);
     }
+    if (videoIds.length) added.record(playlistId.replace(/^VL/, ''), videoIds);
     ui.toast(`Added to ${title}`);
   } catch (e) {
     ui.error(e);
@@ -416,6 +418,10 @@ export function cardMenu(c: Card, opts: { onRemoved?: () => void } = {}): MenuAc
   if ((c.type === 'artist' || c.type === 'profile') && c.browseId?.startsWith('UC')) {
     const sub = library.isSubscribed(c.browseId);
     a.push({ label: sub ? 'Unsubscribe' : 'Subscribe', icon: 'user', run: () => library.setSubscribed(c.browseId!, !sub) });
+  }
+  if (pinKey(c) && ['album', 'single', 'ep', 'playlist', 'artist', 'profile', 'podcast'].includes(c.type)) {
+    const pinned = library.isPinned(c);
+    a.push({ label: pinned ? 'Unpin from Your Library' : 'Pin to Your Library', icon: 'pin', run: () => library.togglePin(c) });
   }
   const artist = c.artists?.find((x) => x.id);
   if (artist && c.type !== 'artist') a.push({ label: 'Go to artist', icon: 'artist', run: () => go(`/artist/${artist.id}`) });

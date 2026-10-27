@@ -69,7 +69,7 @@
           <Img thumbs={t.thumbnails} size={48} />
           <div class="m">
             <div class="a">{t.title}</div>
-            <div class="b">{#if t.explicit}<span class="ebadge">E</span> {/if}{artistNames(t.artists)}{#if t.album} • {t.album.name}{/if}</div>
+            <div class="b">{#if t.explicit}<span class="ebadge">E</span>{/if}{artistNames(t.artists)}{#if t.album}{' • '}{t.album.name}{/if}</div>
           </div>
           <button class="icon-btn more" aria-label="More" onclick={(e) => ui.openMenu(e, trackMenu(t), t)}><Icon name="more" /></button>
         </div>

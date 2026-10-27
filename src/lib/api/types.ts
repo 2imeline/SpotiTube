@@ -88,6 +88,8 @@ export interface Track {
   qid?: number;
   /** Spotify track id: played through its YouTube Music match */
   spotifyId?: string;
+  /** when it was added to the playlist being shown (ms) */
+  addedAt?: number;
 }
 
 export interface Card {

@@ -92,7 +92,7 @@
       </div>
       <p class="sp-note">Songs play from YouTube Music: each one is matched by title, artist and length when it comes up.</p>
       {#if tracks.length}
-        <TrackList tracks={shown} source={{ title: p.name, path }} />
+        <TrackList tracks={shown} addedOf={tracks.some((t) => t.addedAt) ? (t) => t.addedAt : undefined} source={{ title: p.name, path }} />
       {:else}
         <div class="center-msg" style="min-height:20vh">
           {#if data.hidden}

@@ -5,11 +5,14 @@
   import { player, type QueueSource } from '../player/player.svelte';
   import type { TrackMenuContext } from '../actions';
   import { onMount } from 'svelte';
+  import { isMobile } from '../native/platform';
+  import { formatAdded } from '../stores/added.svelte';
 
   let {
     tracks,
     source,
     showAlbum = true,
+    addedOf,
     showArt = true,
     showHead = true,
     compact = false,
@@ -24,6 +27,8 @@
     tracks: Track[];
     source?: QueueSource;
     showAlbum?: boolean;
+    /** adds a "Date added" column (desktop) */
+    addedOf?: (t: Track) => number | undefined;
     showArt?: boolean;
     showHead?: boolean;
     compact?: boolean;
@@ -97,16 +102,18 @@
     return () => io.disconnect();
   });
 
+  const showAdded = $derived(!!addedOf && !isMobile);
   const visible = $derived(virtual ? tracks.slice(start, end) : tracks);
   const offset = $derived(virtual ? start : 0);
 </script>
 
-<div class="tracklist" class:no-album={!showAlbum} class:compact bind:this={listEl} role="grid">
+<div class="tracklist" class:no-album={!showAlbum} class:with-added={showAdded} class:compact bind:this={listEl} role="grid">
   {#if showHead}
     <div class="tl-head">
       <span>#</span>
       <span>Title</span>
       {#if showAlbum}<span>Album</span>{/if}
+      {#if showAdded}<span class="added-h">Date added</span>{/if}
       <span class="r"><Icon name="clock" size={16} /></span>
     </div>
   {/if}
@@ -126,6 +133,7 @@
       track={t}
       n={useTrackNumbers && t.trackNumber ? t.trackNumber : i + offset + numberFrom}
       {showAlbum}
+      added={showAdded ? formatAdded(addedOf!(t)) : undefined}
       {showArt}
       {ctx}
       current={isCurrent(t)}

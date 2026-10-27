@@ -2672,3 +2672,10 @@ html.mobile[data-theme='aero'] .m-drawer-profile .s {
 html.mobile[data-theme='aero'] .m-drawer-sep {
   background: rgba(120, 160, 200, 0.3);
 }
+
+.m-pin {
+  display: inline-flex;
+  color: var(--accent);
+  margin-right: 5px;
+  vertical-align: -1px;
+}

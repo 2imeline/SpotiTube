@@ -46,7 +46,7 @@
     if (tab === 'playlists' && order === 'z_to_a') l = [...l].sort((a, b) => b.title.localeCompare(a.title));
     const f = filter.trim().toLowerCase();
     if (f) l = l.filter((c) => c.title.toLowerCase().includes(f) || c.subtitle.toLowerCase().includes(f));
-    return l;
+    return library.withPins(l);
   });
 
   function createMenu(e: MouseEvent) {
@@ -145,7 +145,7 @@
           {#if !ui.sidebarCollapsed}
             <div class="meta">
               <div class="name">{c.browseId === 'VLLM' ? 'Liked Music' : c.title}</div>
-              <div class="sub">{#if c.menu?.pinned}<Icon name="pin" size={12} />{/if}{kindLabel(c)}</div>
+              <div class="sub">{#if library.isPinned(c)}<span class="pinned" title="Pinned"><Icon name="pin" size={12} /></span>{/if}{kindLabel(c)}</div>
             </div>
             {#if isPlaying(c) && player.playing}<Icon name="volume" size={16} class="accent-ico" />{/if}
           {/if}
@@ -156,6 +156,12 @@
 </nav>
 
 <style>
+  .pinned {
+    display: inline-flex;
+    color: var(--accent);
+    margin-right: 6px;
+    vertical-align: -1px;
+  }
   :global(.accent-ico) {
     color: var(--accent);
   }

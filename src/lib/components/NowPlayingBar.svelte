@@ -35,7 +35,7 @@
       <div class="info">
         <div class="np-title" role="link" tabindex="0" onclick={() => (t.album?.id ? go(`/album/${t.album.id}`) : (ui.rightPanel = 'nowplaying'))} onkeydown={() => {}} title={t.title}>{t.title}</div>
         <div class="np-artist">
-          {#if t.explicit}<span class="ebadge" style="margin-right:4px">E</span>{/if}
+          {#if t.explicit}<span class="ebadge">E</span>{/if}
           {#each t.artists as a, i}{#if i}{', '}{/if}{#if a.id}<a href="#/" onclick={(e) => { e.preventDefault(); go(t.type === 'episode' && a.id?.startsWith('MPSP') ? `/podcast/${a.id}` : `/artist/${a.id}`); }}>{a.name}</a>{:else}{a.name}{/if}{/each}
         </div>
       </div>

@@ -29,7 +29,7 @@
     { label: 'Uploads', icon: 'upload', path: '/uploads', color: '#c25a2a' },
   ];
   const active = (p: string) => router.route.path === p || (p !== '/' && router.route.path.startsWith(p + '?'));
-  const playlists = $derived(library.playlists.filter((p) => p.browseId !== 'VLLM'));
+  const playlists = $derived(library.withPins(library.playlists.filter((p) => p.browseId !== 'VLLM')));
 </script>
 
 <nav class="aero-nav" aria-label="Navigation">
@@ -80,6 +80,7 @@
           title={p.title}
         >
           <Img thumbs={p.thumbnails} size={18} class="pl-thumb" />{p.title}
+          {#if library.isPinned(p)}<span class="pin-ico"><Icon name="pin" size={10} /></span>{/if}
           {#if player.source?.path === r && player.playing}<span class="np-dot"><Icon name="volume" size={11} /></span>{/if}
         </button>
       {/each}
@@ -247,6 +248,11 @@
     flex-shrink: 0;
     border: 1px solid #fff;
     box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2);
+  }
+  .pin-ico {
+    display: inline-flex;
+    margin-left: 4px;
+    color: #6c7f93;
   }
   .np-dot {
     margin-left: auto;

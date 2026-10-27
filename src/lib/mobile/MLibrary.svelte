@@ -13,6 +13,7 @@
   import { ui } from '../stores/ui.svelte';
   import { openCard, cardMenu, newPlaylistDialog } from '../actions';
   import { uploadFiles } from '../upload';
+  import { library } from '../stores/library.svelte';
 
   let { mode = 'library' }: { mode?: 'library' | 'uploads' } = $props();
 
@@ -90,7 +91,7 @@
   });
 
   const tracks = $derived(items.filter((i): i is Track => i.kind === 'track'));
-  const cards = $derived(items.filter((i): i is Card => i.kind === 'card' && i.browseId !== 'VLLM' && i.browseId !== 'VLSE'));
+  const cards = $derived(library.withPins(items.filter((i): i is Card => i.kind === 'card' && i.browseId !== 'VLLM' && i.browseId !== 'VLSE')));
   const typeLabel: Record<string, string> = { album: 'Album', single: 'Single', ep: 'EP', playlist: 'Playlist', artist: 'Artist', profile: 'Profile', podcast: 'Podcast' };
   const orderLabel: Record<string, string> = { '': 'Recents', a_to_z: 'Alphabetical', z_to_a: 'Z–A', recently_added: 'Recently added' };
 
@@ -175,7 +176,7 @@
             <Img thumbs={c.thumbnails} size={128} class="m-row-art {round ? 'round' : ''}" icon={round ? 'user' : 'music'} />
             <div class="m-row-text">
               <div class="t">{c.title}</div>
-              <div class="s">{typeLabel[c.type] ?? ''}{c.subtitle ? ` • ${c.subtitle}` : ''}</div>
+              <div class="s">{#if library.isPinned(c)}<span class="m-pin"><Icon name="pin" size={12} /></span>{/if}{typeLabel[c.type] ?? ''}{c.subtitle ? ` • ${c.subtitle}` : ''}</div>
             </div>
             <button class="icon-btn" aria-label="More" onclick={(e) => { e.stopPropagation(); ui.openMenu(e, cardMenu(c, { onRemoved: load }), c); }}><Icon name="more" size={20} /></button>
           </div>

@@ -76,7 +76,7 @@
         {#each upNext as tr, j (tr.qid)}
           <div class="m-q-row" class:dragging={drag?.from === j} style="top:{j * ROW}px;transform:translateY({shiftFor(j)}px)" role="button" tabindex="0" onclick={() => player.jump(player.index + 1 + j)} onkeydown={() => {}}>
             <Img thumbs={tr.thumbnails} size={96} />
-            <div class="m"><div class="a">{tr.title}</div><div class="b">{#if tr.explicit}<span class="ebadge">E</span> {/if}{artistNames(tr.artists)}</div></div>
+            <div class="m"><div class="a">{tr.title}</div><div class="b">{#if tr.explicit}<span class="ebadge">E</span>{/if}{artistNames(tr.artists)}</div></div>
             <button class="icon-btn" aria-label="More" onclick={(e) => { e.stopPropagation(); ui.openMenu(e, trackMenu(tr, { queueIndex: player.index + 1 + j }), tr); }}><Icon name="more" size={18} /></button>
             <span class="handle" role="button" tabindex="-1" aria-label="Reorder" onpointerdown={(e) => down(e, j)} onpointermove={move} onpointerup={up} onpointercancel={up} onclick={(e) => e.stopPropagation()} onkeydown={() => {}}><Icon name="drag" size={22} /></span>
           </div>

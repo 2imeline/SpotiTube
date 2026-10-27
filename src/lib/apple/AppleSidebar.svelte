@@ -29,7 +29,7 @@
   ];
   let showPlaylists = $state(true);
   const active = (p: string) => router.route.path === p;
-  const playlists = $derived(library.playlists.filter((p) => p.browseId !== 'VLLM'));
+  const playlists = $derived(library.withPins(library.playlists.filter((p) => p.browseId !== 'VLLM')));
 </script>
 
 <nav class="am-side" aria-label="Sidebar">
@@ -55,6 +55,7 @@
         <button class="item pl" class:sel={active(r)} title={p.title} onclick={() => go(r)} ondblclick={() => playCard(p)} oncontextmenu={(e) => ui.openMenu(e, cardMenu(p), p)}>
           <Img thumbs={p.thumbnails} size={20} class="pl-art" />
           <span class="lbl">{p.title}</span>
+          {#if library.isPinned(p)}<Icon name="pin" size={11} class="pin" />{/if}
           {#if player.source?.path === r && player.playing}<Icon name="volume" size={12} class="np" />{/if}
         </button>
       {/each}
@@ -159,6 +160,10 @@
     overflow: hidden;
     text-overflow: ellipsis;
     flex: 1;
+  }
+  .pl :global(.pin) {
+    flex-shrink: 0;
+    color: var(--am-text-3, currentColor);
   }
   .pl :global(.np) {
     color: var(--accent);

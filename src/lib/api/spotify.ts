@@ -171,7 +171,8 @@ export async function getPlaylist(id: string, via: Via = 'auto'): Promise<SpPlay
   const take = (page: any) => {
     for (const it of page?.items ?? []) {
       const t = toTrack(it.item ?? it.track);
-      if (t) tracks.push(t);
+      const at = it.added_at ? Date.parse(it.added_at) : NaN;
+      if (t) tracks.push(isFinite(at) && at > 0 ? { ...t, addedAt: at } : t);
     }
   };
   take(first);
@@ -191,17 +192,22 @@ export async function getPlaylist(id: string, via: Via = 'auto'): Promise<SpPlay
  */
 export async function getPlaylistTracksWeb(id: string, limit = 1500): Promise<Track[]> {
   const r = await spGet(`${SPCLIENT}/playlist/v2/playlist/${encodeURIComponent(id)}?decorate=revision,length,attributes,timestamp,owner&market=from_token`, 'web');
+  const when = new Map<string, number>();
   const ids: string[] = (r?.contents?.items ?? [])
-    .map((i: any) => String(i.uri ?? ''))
-    .filter((u: string) => u.startsWith('spotify:track:'))
-    .map(idOf)
+    .filter((i: any) => String(i.uri ?? '').startsWith('spotify:track:'))
+    .map((i: any) => {
+      const id = idOf(i.uri);
+      const at = Number(i.attributes?.timestamp);
+      if (at > 0 && !when.has(id)) when.set(id, at);
+      return id;
+    })
     .slice(0, limit);
   const out: Track[] = [];
   for (let i = 0; i < ids.length; i += 50) {
     const page = await spGet(`${API}/tracks?ids=${ids.slice(i, i + 50).join(',')}&market=from_token`, 'web');
     for (const t of page?.tracks ?? []) {
       const tr = toTrack(t);
-      if (tr) out.push(tr);
+      if (tr) out.push(when.has(tr.spotifyId ?? '') ? { ...tr, addedAt: when.get(tr.spotifyId!) } : tr);
     }
   }
   return out;

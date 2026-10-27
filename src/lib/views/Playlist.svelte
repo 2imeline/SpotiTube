@@ -14,6 +14,7 @@
   import { auth } from '../stores/auth.svelte';
   import { cardMenu, newPlaylistDialog } from '../actions';
   import type { Card, Shelf, Track } from '../api/types';
+  import { added } from '../stores/added.svelte';
 
   let { id }: { id: string } = $props();
   let data = $state.raw<PlaylistPage | null>(null);
@@ -39,6 +40,7 @@
       tracks = p.tracks;
       more = p.more;
       p.related?.().then((r) => (related = r)).catch(() => {});
+      scanAdded(p);
     } catch (e: any) {
       error = e?.message ?? String(e);
     }
@@ -48,6 +50,30 @@
     auth.version;
     load();
   });
+
+  /** walks the whole playlist in the background to date newly added songs */
+  async function scanAdded(p: PlaylistPage) {
+    const key = id.replace(/^VL/, '');
+    const inLibrary = key === 'LM' || p.header.owned || library.isSaved(key, p.header.saved);
+    const last = added.data[key];
+    if (!inLibrary || (last?.scanned && Date.now() - last.at < 5 * 60_000)) return;
+    const ids = p.tracks.map((t) => t.videoId);
+    let next = p.more;
+    try {
+      for (let i = 0; next && i < 80; i++) {
+        const page = await next();
+        if (id.replace(/^VL/, '') !== key) return;
+        ids.push(...page.items.map((t) => t.videoId));
+        next = page.continuation;
+      }
+    } catch {
+      return;
+    }
+    if (!next) added.scan(key, ids);
+  }
+  const addedKey = $derived(id.replace(/^VL/, ''));
+  const addedOf = (t: Track) => added.of(addedKey, t.videoId);
+  const hasAdded = $derived(tracks.some((t) => added.of(addedKey, t.videoId)));
 
   async function loadMore() {
     if (!more) return;
@@ -195,7 +221,7 @@
         </div>
       </div>
       {#if tracks.length}
-        <TrackList tracks={shown} source={{ title: isLiked ? 'Liked Music' : h.title, path }} ctx={{ playlistId: owned ? id : undefined, onRemoved }} loadMore={more && !filter ? loadMore : undefined} queueMore={filter ? undefined : more} onmove={owned && !filter && !isLiked ? moveTrack : undefined} />
+        <TrackList tracks={shown} addedOf={hasAdded ? addedOf : undefined} source={{ title: isLiked ? 'Liked Music' : h.title, path }} ctx={{ playlistId: owned ? id : undefined, onRemoved }} loadMore={more && !filter ? loadMore : undefined} queueMore={filter ? undefined : more} onmove={owned && !filter && !isLiked ? moveTrack : undefined} />
       {:else}
         <div class="center-msg" style="min-height:20vh"><div>This playlist is empty. Find songs to add with search.</div><button class="pill-btn" onclick={() => go('/search')}>Find songs</button></div>
       {/if}

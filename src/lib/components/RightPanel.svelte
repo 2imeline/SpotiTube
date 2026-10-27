@@ -96,7 +96,7 @@
     <Img thumbs={tr.thumbnails} size={48} />
     <div class="m">
       <div class="a">{tr.title}</div>
-      <div class="b">{#if tr.explicit}<span class="ebadge">E</span> {/if}{artistNames(tr.artists)}</div>
+      <div class="b">{#if tr.explicit}<span class="ebadge">E</span>{/if}{artistNames(tr.artists)}</div>
     </div>
     <button class="icon-btn more" aria-label="More" onclick={(e) => { e.stopPropagation(); ui.openMenu(e, trackMenu(tr, { queueIndex: current ? undefined : i }), tr); }}><Icon name="more" /></button>
   </div>

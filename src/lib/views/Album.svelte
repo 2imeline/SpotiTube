@@ -73,7 +73,7 @@
         {#each h.artists ?? [] as a, i}{#if i}<span>, </span>{/if}{#if a.id}<a href="#/" onclick={(e) => { e.preventDefault(); go(`/artist/${a.id}`); }}>{a.name}</a>{:else}<b>{a.name}</b>{/if}{/each}
         {#if h.year}<span class="dot"></span><span>{h.year}</span>{/if}
         <span class="dot"></span><span>{data?.tracks.length ?? 0} songs, {fmtDur(totalSec)}</span>
-        {#if h.explicit}<span class="ebadge" style="margin-left:6px">E</span>{/if}
+        {#if h.explicit}<span class="ebadge" style="margin-left:6px;margin-right:0">E</span>{/if}
       {/snippet}
     </EntityHeader>
     <div style="position:relative;background:linear-gradient(rgba(0,0,0,.6), var(--panel) 240px)">
