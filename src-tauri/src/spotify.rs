@@ -278,9 +278,9 @@ const HOOK: &str = r#"(() => {
 })();"#;
 
 fn has_session(w: &tauri::WebviewWindow) -> bool {
-    w.cookies_for_url("https://open.spotify.com/".parse().unwrap())
-        .map(|c| c.iter().any(|c| c.name() == "sp_dc" && !c.value().is_empty()))
-        .unwrap_or(false)
+    crate::cookies_for(w, "https://open.spotify.com/")
+        .iter()
+        .any(|c| c.name() == "sp_dc" && !c.value().is_empty())
 }
 
 /// Tracks whether the web window is still open, so background threads
@@ -419,10 +419,8 @@ pub async fn spotify_web_logout(app: AppHandle, state: State<'_, AppState>) -> R
         std::thread::spawn(move || {
             std::thread::sleep(Duration::from_secs(2));
             for u in ["https://open.spotify.com/", "https://accounts.spotify.com/", "https://www.spotify.com/"] {
-                if let Ok(cs) = w.cookies_for_url(u.parse().unwrap()) {
-                    for c in cs {
-                        let _ = w.delete_cookie(c);
-                    }
+                for c in crate::cookies_for(&w, u) {
+                    let _ = w.delete_cookie(c);
                 }
             }
             let _ = w.close();

@@ -260,19 +260,46 @@ fn logout(app: AppHandle, state: State<'_, AppState>) {
 
 const LOGIN_URL: &str = "https://accounts.google.com/ServiceLogin?ltmpl=music&service=youtube&uilel=3&continue=https%3A%2F%2Fwww.youtube.com%2Fsignin%3Faction_handle_signin%3Dtrue%26app%3Ddesktop%26hl%3Den%26next%3Dhttps%253A%252F%252Fmusic.youtube.com%252F";
 
+/// Cookies a request to `url` would send. WebKit (macOS) only matches the
+/// exact host in `cookies_for_url`, so domain cookies like `.youtube.com`
+/// (where Google keeps the sign-in) would be missed: filter all cookies there.
+pub(crate) fn cookies_for(win: &tauri::WebviewWindow, url: &str) -> Vec<tauri::webview::Cookie<'static>> {
+    #[cfg(windows)]
+    {
+        win.cookies_for_url(url.parse().unwrap()).unwrap_or_default()
+    }
+    #[cfg(not(windows))]
+    {
+        let host = url.split("://").nth(1).and_then(|r| r.split('/').next()).unwrap_or("").to_string();
+        let mut all = win.cookies().unwrap_or_default();
+        all.retain(|c| {
+            let d = c.domain().unwrap_or("").trim_start_matches('.');
+            !d.is_empty() && (host == d || host.ends_with(&format!(".{d}")))
+        });
+        // host cookies last so they win over same-named domain cookies
+        all.sort_by_key(|c| c.domain().map(|d| !d.starts_with('.')).unwrap_or(true));
+        all
+    }
+}
+
 fn capture_login(app: AppHandle, win: tauri::WebviewWindow) {
-    // give the page a moment to settle its cookies
-    std::thread::sleep(Duration::from_millis(600));
-    let mut map = BTreeMap::new();
-    for u in ["https://music.youtube.com/", "https://www.youtube.com/"] {
-        if let Ok(cookies) = win.cookies_for_url(u.parse().unwrap()) {
-            for c in cookies {
+    // the page may still be setting its cookies: look a few times
+    let mut data = AuthData::default();
+    for attempt in 0..6 {
+        std::thread::sleep(Duration::from_millis(if attempt == 0 { 600 } else { 1000 }));
+        let mut map = BTreeMap::new();
+        for u in ["https://www.youtube.com/", "https://music.youtube.com/"] {
+            for c in cookies_for(&win, u) {
                 map.insert(c.name().to_string(), c.value().to_string());
             }
         }
+        data = AuthData { cookies: map, auth_user: 0 };
+        if data.logged_in() {
+            break;
+        }
     }
-    let data = AuthData { cookies: map, auth_user: 0 };
     if !data.logged_in() {
+        crate::log::write("login: signed in page loaded, but no session cookies found");
         return;
     }
     let state = app.state::<AppState>();
@@ -280,6 +307,17 @@ fn capture_login(app: AppHandle, win: tauri::WebviewWindow) {
     state.save_auth();
     let _ = app.emit("auth-changed", true);
     let _ = win.close();
+    show_main(&app);
+}
+
+/// Brings the main window back to the front (it can end up behind the
+/// sign-in window, or hidden on macOS when the last visible window closes).
+fn show_main(app: &AppHandle) {
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.unminimize();
+        let _ = w.show();
+        let _ = w.set_focus();
+    }
 }
 
 #[tauri::command]
@@ -317,7 +355,13 @@ async fn login(app: AppHandle) -> Result<(), String> {
     {
         builder = builder.user_agent(BROWSER_UA);
     }
-    builder.build().map_err(|e| e.to_string())?;
+    let w = builder.build().map_err(|e| e.to_string())?;
+    let main = app.clone();
+    w.on_window_event(move |e| {
+        if matches!(e, tauri::WindowEvent::Destroyed) {
+            show_main(&main);
+        }
+    });
     Ok(())
 }
 
@@ -528,8 +572,16 @@ pub fn run() {
             spotify::spotify_status,
             spotify::spotify_get,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running SpotiTube");
+        .build(tauri::generate_context!())
+        .expect("error while running SpotiTube")
+        .run(|app, event| {
+            // macOS: clicking the Dock icon brings the window back
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::Reopen { .. } = event {
+                show_main(app);
+            }
+            let _ = (app, event);
+        });
 }
 
 #[cfg(test)]
