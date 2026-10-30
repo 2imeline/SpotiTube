@@ -1,6 +1,6 @@
 # SpotiTube
 
-A **lightweight, native YouTube Music app** for Windows and iPhone with a pixel-faithful
+A **lightweight, native YouTube Music app** for Windows, Mac and iPhone with a pixel-faithful
 Spotify-style interface — plus a glossy **Frutiger Aero / Windows 7** theme and an
 **Apple Music** theme.
 
@@ -20,6 +20,19 @@ Grab the latest build from the **[Releases](../../releases/latest)** page:
 | `SpotiTube-x.y.z.msi` | MSI package |
 
 Windows 10/11. Uses the Microsoft Edge WebView2 runtime that ships with Windows.
+
+### Mac
+
+| File | What it is |
+| --- | --- |
+| `SpotiTube-x.y.z-macos.dmg` | Universal app (Apple Silicon + Intel): open it and drag SpotiTube to Applications |
+| `SpotiTube-x.y.z-macos.zip` | The same app zipped (used by the in-app updater) |
+
+macOS 11 or later. Uses the system's WebKit, so it adds no browser engine of its own,
+plays AAC streams through the hardware decoder, and shows up in the menu bar /
+Control Center Now Playing with the keyboard media keys and AirPods controls.
+The app isn't notarized: the first time, open **System Settings → Privacy & Security**
+and click **Open Anyway** (or run `xattr -dr com.apple.quarantine /Applications/SpotiTube.app`).
 
 ### iPhone
 
@@ -106,11 +119,12 @@ YouTube Music features as the desktop app, with native playback:
 ```bash
 npm ci
 npx tauri build          # Windows: produces exe, NSIS setup and MSI
+npx tauri build --target universal-apple-darwin   # Mac: .app and .dmg
 npx tauri dev            # development
 ```
 
 Requires Node 20+ and Rust (stable). The GitHub Actions workflow in
-`.github/workflows/build.yml` builds the Windows release automatically.
+`.github/workflows/build.yml` builds the Windows and Mac releases automatically.
 
 **iPhone** (macOS + Xcode 16):
 

@@ -9,7 +9,7 @@ export interface UpdateInfo {
   available: boolean;
   notes: string;
   url: string;
-  mode: 'installer' | 'msi' | 'portable';
+  mode: 'installer' | 'msi' | 'portable' | 'mac';
 }
 
 const LAST_CHECK = 'st.updateChecked';

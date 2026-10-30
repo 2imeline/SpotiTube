@@ -7,6 +7,7 @@
 
 mod discord;
 mod log;
+mod nowplaying;
 mod proxy;
 mod spotify;
 mod updater;
@@ -21,6 +22,8 @@ use serde::{Deserialize, Serialize};
 use tauri::webview::PageLoadEvent;
 use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
 
+#[cfg(target_os = "macos")]
+const SAFARI_MAC_UA: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Safari/605.1.15";
 pub const BROWSER_UA: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36 Edg/140.0.0.0";
 
 #[derive(Default, Serialize, Deserialize, Clone)]
@@ -305,7 +308,12 @@ async fn login(app: AppHandle) -> Result<(), String> {
             std::thread::spawn(move || capture_login(app, win));
         }
     });
-    #[cfg(not(windows))]
+    // a user agent that matches the engine, so Google treats it as a normal browser
+    #[cfg(target_os = "macos")]
+    {
+        builder = builder.user_agent(SAFARI_MAC_UA);
+    }
+    #[cfg(all(not(windows), not(target_os = "macos")))]
     {
         builder = builder.user_agent(BROWSER_UA);
     }
@@ -381,7 +389,17 @@ async fn upload_song(state: State<'_, AppState>, request: tauri::ipc::Request<'_
 }
 
 #[tauri::command]
+fn now_playing(app: AppHandle, state: State<'_, AppState>, info: nowplaying::NowPlaying) {
+    nowplaying::update(&app, state.http.clone(), info);
+}
+
+#[tauri::command]
 fn set_media_keys(app: AppHandle, enabled: bool) {
+    // macOS: media keys reach us through Now Playing (MPRemoteCommandCenter);
+    // a global key tap would need the Accessibility permission
+    if cfg!(target_os = "macos") {
+        return;
+    }
     use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Shortcut};
     let gs = app.global_shortcut();
     let keys = [Code::MediaPlayPause, Code::MediaTrackNext, Code::MediaTrackPrevious, Code::MediaStop];
@@ -481,6 +499,7 @@ pub fn run() {
                 discord: discord::Discord::start(),
                 spotify: spotify::Spotify::load(&dir),
             });
+            nowplaying::setup(app.handle());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -493,6 +512,7 @@ pub fn run() {
             stream_proxy_base,
             upload_song,
             set_media_keys,
+            now_playing,
             open_external,
             discord_configure,
             discord_set_activity,

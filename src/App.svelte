@@ -23,7 +23,7 @@
   import { initDiscord } from './lib/player/discord.svelte';
   import { spotify } from './lib/stores/spotify.svelte';
   import MobileApp from './lib/mobile/MobileApp.svelte';
-  import { isIOS, isMobile } from './lib/native/platform';
+  import { isIOS, isMac, isMobile } from './lib/native/platform';
   import { initIOS } from './lib/native/ios.svelte';
 
   let sidebarW = $state(+(localStorage.getItem('st.sidebarW') ?? 300) || 300);
@@ -76,8 +76,10 @@
 
   function keys(e: KeyboardEvent) {
     const t = e.target as HTMLElement;
+    // Cmd on the Mac, Ctrl elsewhere
+    const mod = isMac ? e.metaKey : e.ctrlKey;
     const typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable);
-    if (e.ctrlKey && (e.key === 'k' || e.key === 'l')) {
+    if (mod && (e.key === 'k' || e.key === 'l')) {
       e.preventDefault();
       go('/search');
       setTimeout(() => (document.querySelector('.searchbox input') as HTMLInputElement)?.focus(), 30);
@@ -87,25 +89,25 @@
     if (e.code === 'Space') {
       e.preventDefault();
       player.toggle();
-    } else if (e.ctrlKey && e.key === 'ArrowRight') player.next();
-    else if (e.ctrlKey && e.key === 'ArrowLeft') player.previous();
-    else if (e.ctrlKey && e.key === 'ArrowUp') {
+    } else if (mod && e.key === 'ArrowRight') player.next();
+    else if (mod && e.key === 'ArrowLeft') player.previous();
+    else if (mod && e.key === 'ArrowUp') {
       e.preventDefault();
       player.setVolume(player.volume + 0.1);
-    } else if (e.ctrlKey && e.key === 'ArrowDown') {
+    } else if (mod && e.key === 'ArrowDown') {
       e.preventDefault();
       player.setVolume(player.volume - 0.1);
-    } else if (e.ctrlKey && e.key === 's') {
+    } else if (mod && e.key === 's') {
       e.preventDefault();
       player.toggleShuffle();
-    } else if (e.ctrlKey && e.key === 'r') {
+    } else if (mod && e.key === 'r') {
       e.preventDefault();
       player.cycleRepeat();
     } else if (e.altKey && e.key === 'ArrowLeft') router.back();
     else if (e.altKey && e.key === 'ArrowRight') router.forward();
     else if (e.shiftKey && e.key === 'ArrowRight') player.seek(player.time + 5);
     else if (e.shiftKey && e.key === 'ArrowLeft') player.seek(player.time - 5);
-    else if (e.ctrlKey && e.key === ',') go('/settings');
+    else if (mod && e.key === ',') go('/settings');
   }
 </script>
 

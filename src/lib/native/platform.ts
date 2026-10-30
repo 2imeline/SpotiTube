@@ -2,6 +2,8 @@
 const w = typeof window !== 'undefined' ? (window as any) : {};
 
 export const isIOS = w.__SPOTITUBE_PLATFORM__ === 'ios';
+/** the macOS desktop app (Tauri on WKWebView) */
+export const isMac = !isIOS && typeof navigator !== 'undefined' && /Macintosh|Mac OS X/.test(navigator.userAgent) && !!w.__TAURI_INTERNALS__;
 
 function forcedMobile(): boolean {
   try {

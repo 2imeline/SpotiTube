@@ -1,6 +1,6 @@
 [package]
 name = "spotitube"
-version = "1.6.3"
+version = "1.7.0"
 description = "SpotiTube - a lightweight native YouTube Music desktop client"
 authors = ["SpotiTube"]
 edition = "2021"
@@ -14,7 +14,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2.5", features = [] }
 
 [dependencies]
-tauri = { version = "2.12", features = [] }
+tauri = { version = "2.12", features = ["macos-private-api"] }
 tauri-plugin-single-instance = "2"
 tauri-plugin-global-shortcut = "2"
 serde = { version = "1", features = ["derive"] }
@@ -26,6 +26,15 @@ tiny_http = "0.12"
 urlencoding = "2"
 fastrand = "2"
 parking_lot = "0.12"
+
+# macOS Now Playing / media keys (MPRemoteCommandCenter)
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+block2 = "0.6"
+objc2-foundation = { version = "0.3", features = ["NSString", "NSDictionary", "NSValue", "NSData", "NSGeometry", "NSObject"] }
+objc2-app-kit = { version = "0.3", features = ["NSImage", "objc2-core-foundation"] }
+objc2-core-foundation = { version = "0.3", features = ["CFCGTypes"] }
+objc2-media-player = { version = "0.3", features = ["MPNowPlayingInfoCenter", "MPRemoteCommandCenter", "MPRemoteCommand", "MPRemoteCommandEvent", "MPMediaItem", "block2", "objc2-app-kit", "objc2-core-foundation"] }
 
 [profile.release]
 codegen-units = 1

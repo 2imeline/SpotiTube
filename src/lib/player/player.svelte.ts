@@ -9,7 +9,7 @@ import { settings } from '../stores/settings.svelte';
 import { ui } from '../stores/ui.svelte';
 import { bestThumb } from '../util/thumbs';
 import { needsMatch, resolveTrack } from '../api/match';
-import { isIOS } from '../native/platform';
+import { isIOS, isMac } from '../native/platform';
 import { NativeMedia, type NativeMeta } from '../native/media';
 
 export interface QueueSource {
@@ -151,14 +151,22 @@ class Player {
 
     this.restore();
     if (this.native) this.volume = 1; // the phone's volume buttons control loudness
-    else this.setupMediaSession();
+    // the Mac app publishes Now Playing natively (see nowPlaying)
+    else if (!isMac) this.setupMediaSession();
     if (isTauri) {
       listen<string>('media-key', (e) => {
         if (e.payload === 'playpause') this.toggle();
+        else if (e.payload === 'play') this.play();
+        else if (e.payload === 'pause') this.pause();
         else if (e.payload === 'next') this.next();
         else if (e.payload === 'previous') this.previous();
         else if (e.payload === 'stop') this.pause();
       });
+      if (isMac) {
+        listen<number>('media-seek', (e) => this.seek(e.payload));
+        v.addEventListener('playing', () => this.nowPlaying(false));
+        v.addEventListener('pause', () => this.nowPlaying(false));
+      }
     }
     // silent stop: "playing" but the position doesn't move
     let lastT = -1;
@@ -796,10 +804,19 @@ class Player {
     }
   }
 
+  /** macOS menu bar / Control Center player */
+  private nowPlaying(full: boolean) {
+    const t = this.current;
+    const info: Record<string, unknown> = { full, playing: this.playing, position: this.el?.currentTime || this.time, duration: this.duration || t?.durationSec || 0 };
+    if (full && t) Object.assign(info, { title: t.title, artist: t.artists.map((a) => a.name).join(', '), album: t.album?.name ?? '', art: bestThumb(t.thumbnails, 512) || null });
+    call('now_playing', { info }).catch(() => {});
+  }
+
   private updateMetadata() {
     const t = this.current;
     const ms = navigator.mediaSession;
     if (t) document.title = `${t.title} • ${t.artists.map((a) => a.name).join(', ')}`;
+    if (isMac) return this.nowPlaying(true);
     if (!ms || !t || typeof MediaMetadata === 'undefined') return;
     const art = bestThumb(t.thumbnails, 512);
     ms.metadata = new MediaMetadata({
@@ -811,6 +828,7 @@ class Player {
   }
 
   private updatePosition() {
+    if (isMac) return this.nowPlaying(false);
     const ms = navigator.mediaSession;
     if (!ms?.setPositionState || !this.duration) return;
     try {

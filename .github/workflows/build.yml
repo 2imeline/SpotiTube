@@ -58,6 +58,49 @@ jobs:
           name: SpotiTube-windows
           path: out/*
 
+  macos:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # one app for Apple Silicon and Intel Macs
+      - name: Build app + disk image
+        run: npx tauri build --target universal-apple-darwin
+
+      - name: Collect artifacts
+        run: |
+          v=$(node -p "require('./package.json').version")
+          b=src-tauri/target/universal-apple-darwin/release/bundle
+          mkdir -p out
+          cp "$(ls $b/dmg/*.dmg | head -n 1)" "out/SpotiTube-$v-macos.dmg"
+          # the in-app updater installs from this zip
+          ditto -c -k --sequesterRsrc --keepParent "$b/macos/SpotiTube.app" "out/SpotiTube-$v-macos.zip"
+          codesign -dv "$b/macos/SpotiTube.app" 2>&1 | head -5
+          lipo -archs "$b"/macos/SpotiTube.app/Contents/MacOS/*
+          du -sh "$b/macos/SpotiTube.app"
+          ls -la out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SpotiTube-macos
+          path: out/*
+
   ios:
     runs-on: macos-15
     steps:
@@ -203,7 +246,7 @@ jobs:
           gh release upload ios-autotest ios-autotest.zip --clobber --repo "$GITHUB_REPOSITORY"
 
   release:
-    needs: [windows, ios]
+    needs: [windows, macos, ios]
     if: startsWith(github.ref, 'refs/tags/v') || github.ref_name == 'main' || github.ref_name == 'claude/upbeat-noether-1v34ms'
     runs-on: ubuntu-latest
     steps:
@@ -246,6 +289,11 @@ jobs:
             - **SpotiTube-${{ needs.windows.outputs.version }}.msi** – MSI package for managed installs
 
             Requires Windows 10/11 (uses the built-in Microsoft Edge WebView2 runtime; the installer fetches it automatically on older systems).
+
+            ## Mac
+            - **SpotiTube-${{ needs.windows.outputs.version }}-macos.dmg** – open it and drag SpotiTube to Applications (Apple Silicon and Intel, macOS 11 or later)
+
+            The app isn't notarized by Apple, so the first time macOS says it can't check it: open **System Settings → Privacy & Security** and click **Open Anyway** (or run `xattr -dr com.apple.quarantine /Applications/SpotiTube.app` in Terminal). Later updates install from inside the app.
 
             ## iPhone
             - **SpotiTube-${{ needs.windows.outputs.version }}.ipa** – sideload with AltStore, SideStore or Sideloadly (they sign it with your Apple ID)

@@ -10,7 +10,7 @@
 import { innertube, type ClientSpec } from '../api/innertube';
 import { http, call, isTauri } from '../api/transport';
 import { nav } from '../api/parse';
-import { isIOS } from '../native/platform';
+import { isIOS, isMac } from '../native/platform';
 
 export interface Stream {
   url: string;
@@ -213,8 +213,12 @@ function pickFormat(formats: RawFormat[], video: boolean): RawFormat | undefined
     return muxed.sort((a, b) => b.bitrate - a.bitrate)[0];
   }
   let audio = formats.filter((f) => f.mimeType.startsWith('audio/') && !f.isDrc && !(f.xtags ?? '').includes('drc'));
-  // AVPlayer (iPhone) plays AAC in MP4, not Opus/WebM
-  if (isIOS) audio = audio.filter((f) => f.mimeType.startsWith('audio/mp4'));
+  // AVPlayer (iPhone) plays AAC in MP4, not Opus/WebM. On the Mac AAC is
+  // decoded in hardware (less CPU and battery) and WebKit's Opus support varies.
+  if (isIOS || isMac) {
+    const aac = audio.filter((f) => f.mimeType.startsWith('audio/mp4'));
+    if (aac.length || isIOS) audio = aac;
+  }
   const defaults = audio.filter((f) => !f.audioTrack || f.audioTrack.audioIsDefault);
   if (defaults.length) audio = defaults;
   if (!audio.length) return undefined;

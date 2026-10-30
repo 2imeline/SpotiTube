@@ -7,6 +7,7 @@
   import { settings, saveSettings } from '../stores/settings.svelte';
   import { artistNames, bestThumb } from '../util/thumbs';
   import { isTauri } from '../api/transport';
+  import { isMac } from '../native/platform';
   import { onMount } from 'svelte';
 
   const IDLE_MS = 5000;
@@ -56,6 +57,8 @@
         const pos = await win.outerPosition();
         prev = { w: size.width, h: size.height, x: pos.x, y: pos.y, max };
         await win.setMinSize(new d.LogicalSize(220, 220));
+        // macOS: no traffic lights over the artwork / record
+        if (isMac) await win.setDecorations(false).catch(() => {});
         await win.setAlwaysOnTop(true);
         await applyWindow(vinyl);
       })();
@@ -65,6 +68,10 @@
       if (!win) return;
       const d = await import('@tauri-apps/api/dpi');
       await win.setShadow?.(true).catch(() => {});
+      if (isMac) {
+        await win.setDecorations(true).catch(() => {});
+        await win.setTitleBarStyle?.('overlay').catch(() => {});
+      }
       await win.setAlwaysOnTop(false);
       await win.setMinSize(new d.LogicalSize(820, 560));
       if (prev) {

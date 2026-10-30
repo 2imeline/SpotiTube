@@ -1,7 +1,7 @@
 import { apiConfig, clearApiCache } from '../api/innertube';
 import { streamPrefs } from '../player/streams';
 import { call, isTauri } from '../api/transport';
-import { isMobile } from '../native/platform';
+import { isMac, isMobile } from '../native/platform';
 
 export type Theme = 'spotify' | 'aero' | 'apple';
 
@@ -136,6 +136,7 @@ export function applySettings() {
   root.style.setProperty('--accent-deep', shade(a, -0.7));
   root.style.setProperty('--on-accent', luminance(a) > 0.36 ? '#000000' : '#ffffff');
   root.classList.toggle('mobile', isMobile);
+  root.classList.toggle('mac', isMac);
   root.style.zoom = isMobile ? '1' : String(settings.zoom);
   root.classList.toggle('reduce-motion', settings.reduceMotion);
   apiConfig.hl = settings.hl;

@@ -2713,3 +2713,18 @@ html:not(.apple-dark)[data-theme='apple'] .src-tag.spotify {
 html:not(.apple-dark)[data-theme='apple'] .src-tag.ytm {
   color: #d42a20;
 }
+
+/* ------------------------------------------------ macOS: native traffic lights over the top bar */
+html.mac .win-controls {
+  display: none;
+}
+html.mac .titlebar {
+  padding-left: 84px;
+}
+html.mac .am-side .drag {
+  height: 52px;
+}
+html.mac .aero-caption .cap-row {
+  height: 64px;
+  padding-left: 84px;
+}

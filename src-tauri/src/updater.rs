@@ -20,7 +20,7 @@ pub struct UpdateInfo {
     available: bool,
     notes: String,
     url: String,
-    /// "installer" | "msi" | "portable"
+    /// "installer" | "msi" | "portable" | "mac"
     mode: String,
 }
 
@@ -45,6 +45,9 @@ fn is_newer(latest: &str, current: &str) -> bool {
 /// How this copy was installed, which decides the asset we update with.
 fn install_mode() -> (&'static str, PathBuf) {
     let exe = std::env::current_exe().unwrap_or_default();
+    if cfg!(target_os = "macos") {
+        return ("mac", exe);
+    }
     let dir = exe.parent().map(Path::to_path_buf).unwrap_or_default();
     if dir.join("uninstall.exe").exists() {
         return ("installer", exe);
@@ -91,6 +94,7 @@ fn pick_asset<'a>(assets: &'a [serde_json::Value], mode: &str) -> Option<&'a ser
     let suffix = match mode {
         "installer" => "-setup.exe",
         "msi" => ".msi",
+        "mac" => "-macos.zip",
         _ => "-portable.exe",
     };
     assets
@@ -173,7 +177,46 @@ fn launch_installer(mode: &str, file: &Path, exe: &Path) -> Result<(), String> {
     Ok(())
 }
 
-#[cfg(not(windows))]
+/// Replaces the running SpotiTube.app with the downloaded one once this
+/// process has quit, then opens it again.
+#[cfg(target_os = "macos")]
+fn launch_installer(_mode: &str, file: &Path, exe: &Path) -> Result<(), String> {
+    // .../SpotiTube.app/Contents/MacOS/spotitube
+    let bundle = exe
+        .ancestors()
+        .nth(3)
+        .filter(|p| p.extension().map(|e| e == "app").unwrap_or(false))
+        .ok_or("SpotiTube isn't running from an app bundle")?;
+    const SCRIPT: &str = r#"
+pid="$1"; zip="$2"; app="$3"
+while kill -0 "$pid" 2>/dev/null; do sleep 0.2; done
+tmp=$(mktemp -d)
+ditto -x -k "$zip" "$tmp/new" || { open "$app"; exit 1; }
+new=$(find "$tmp/new" -maxdepth 1 -name '*.app' | head -n 1)
+[ -n "$new" ] || { open "$app"; exit 1; }
+if mv "$app" "$tmp/old.app"; then
+  ditto "$new" "$app" || { rm -rf "$app"; mv "$tmp/old.app" "$app"; }
+fi
+xattr -dr com.apple.quarantine "$app" 2>/dev/null
+open "$app"
+rm -rf "$tmp" "$zip"
+"#;
+    std::process::Command::new("/bin/sh")
+        .arg("-c")
+        .arg(SCRIPT)
+        .arg("sh")
+        .arg(std::process::id().to_string())
+        .arg(file)
+        .arg(bundle)
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .map_err(|err| format!("Couldn't start the updater: {err}"))?;
+    Ok(())
+}
+
+#[cfg(all(not(windows), not(target_os = "macos")))]
 fn launch_installer(_mode: &str, file: &Path, _exe: &Path) -> Result<(), String> {
     Err(format!("Automatic install is only supported on Windows. The update was downloaded to {}", file.display()))
 }
