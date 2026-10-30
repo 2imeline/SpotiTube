@@ -75,6 +75,8 @@ class Player {
   private prefetched = '';
   private stallTimer?: ReturnType<typeof setTimeout>;
   private stalled = false;
+  /** src that was ended early because its reported length was wrong */
+  private cutAt = '';
   /** iOS: native AVPlayer engine (null on desktop) */
   native: NativeMedia | null = null;
   private preloaded: { qid: number; stream: Stream } | null = null;
@@ -102,10 +104,20 @@ class Player {
 
     v.addEventListener('timeupdate', () => {
       this.time = v.currentTime;
+      // the media reports a longer length than the song: end it ourselves, it only plays silence after this
+      if (!v.paused && this.duration && v.duration - this.duration > 3 && v.currentTime >= this.duration - 0.25 && this.cutAt !== v.src) {
+        this.cutAt = v.src;
+        v.pause();
+        this.onEnded();
+        return;
+      }
       this.onProgress();
     });
     v.addEventListener('durationchange', () => {
-      if (isFinite(v.duration)) this.duration = v.duration;
+      if (!isFinite(v.duration)) return;
+      // WebKit (macOS) can report YouTube's AAC streams at twice their real length: trust YouTube's length
+      const known = this.stream?.duration || this.current?.durationSec || 0;
+      this.duration = known && Math.abs(v.duration - known) > 3 ? known : v.duration;
       this.updatePosition();
     });
     v.addEventListener('loadedmetadata', () => {
@@ -119,6 +131,7 @@ class Player {
     v.addEventListener('playing', () => {
       this.playing = true;
       this.loading = false;
+      this.cutAt = '';
       this.stalled = false;
       clearTimeout(this.stallTimer);
       this.retries = 0;
