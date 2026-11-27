@@ -734,12 +734,6 @@
 [data-theme='apple'] .lyrics-view .line.active {
   color: #fff;
 }
-[data-theme='apple'] .fs-meta .tt {
-  font-weight: 700;
-}
-[data-theme='apple'] .fs-main .cover {
-  border-radius: 12px;
-}
 [data-theme='apple'] .fs-bottom .ctrl-play {
   background: transparent;
   color: #fff;

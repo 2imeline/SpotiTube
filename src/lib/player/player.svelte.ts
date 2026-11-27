@@ -94,6 +94,8 @@ class Player {
       v.playsInline = true;
       v.className = 'media-el';
       v.disablePictureInPicture = false;
+      // lets the visualizer read the audio (the stream relay sends CORS headers)
+      if (isTauri) v.crossOrigin = 'anonymous';
       const host = document.createElement('div');
       host.id = 'media-host';
       host.style.cssText = 'position:fixed;width:1px;height:1px;left:-10px;top:-10px;overflow:hidden;opacity:0;pointer-events:none';
@@ -718,7 +720,53 @@ class Player {
     this.applyVolume();
   }
   applyVolume() {
-    if (this.el) this.el.volume = this.muted ? 0 : Math.min(1, this.volume * this.volume * this.gain);
+    if (!this.el) return;
+    const v = this.muted ? 0 : Math.min(1, this.volume * this.volume * this.gain);
+    // routed through Web Audio: volume lives in the graph (WebKit ignores element volume there)
+    if (this.audio) {
+      this.el.volume = 1;
+      this.audio.gain.gain.value = v;
+    } else this.el.volume = v;
+  }
+
+  private audio: { ctx: AudioContext; gain: GainNode; analyser: AnalyserNode } | null = null;
+  private audioTried = false;
+
+  /**
+   * Frequency data for the visualizer. Built on first use: once the element is
+   * routed through Web Audio it stays that way, so only when the stream is
+   * readable (a non-readable one would play as silence).
+   */
+  async analyser(): Promise<AnalyserNode | null> {
+    if (this.audio) {
+      this.audio.ctx.resume().catch(() => {});
+      return this.audio.analyser;
+    }
+    if (this.native || !isTauri || this.audioTried || !this.el.currentSrc) return null;
+    this.audioTried = true;
+    try {
+      const probe = await fetch(this.el.currentSrc, { headers: { Range: 'bytes=0-1' }, mode: 'cors' });
+      if (!probe.ok) return null;
+      await probe.body?.cancel().catch(() => {});
+      const ctx = new AudioContext();
+      const src = ctx.createMediaElementSource(this.el);
+      const gain = ctx.createGain();
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 2048;
+      analyser.smoothingTimeConstant = 0.72;
+      src.connect(gain).connect(ctx.destination);
+      src.connect(analyser);
+      this.audio = { ctx, gain, analyser };
+      this.applyVolume();
+      // sleep or an output change can suspend the graph, which would mute the music
+      ctx.onstatechange = () => this.playing && ctx.state !== 'running' && ctx.resume().catch(() => {});
+      this.el.addEventListener('playing', () => ctx.resume().catch(() => {}));
+      await ctx.resume();
+      return analyser;
+    } catch (e) {
+      console.warn('visualizer audio', e);
+      return null;
+    }
   }
 
   setRate(r: number) {
