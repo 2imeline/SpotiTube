@@ -33,7 +33,7 @@
   <div class="row">
     <div class="now">
       {#if t}
-        <button class="thumb" onclick={() => (ui.rightPanel = 'queue')} title="Show Now Playing list"><Img thumbs={t.thumbnails} size={44} /></button>
+        <button class="thumb" onclick={() => (ui.fullscreenPlayer = true)} title="Now Playing"><Img thumbs={t.thumbnails} size={44} /></button>
         <div class="txt">
           <div class="a" title={t.title}>{t.title}</div>
           <div class="b">{artistNames(t.artists)}{#if t.album} — {t.album.name}{/if}</div>

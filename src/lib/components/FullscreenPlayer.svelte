@@ -109,7 +109,7 @@
           {#if lyrics.loading}
             <div class="np-note"><span class="spinner"></span></div>
           {:else if !lyrics.data}
-            <div class="np-note">No lyrics for this song</div>
+            <div class="np-note">Lyrics unavailable</div>
           {:else}
             <div class="np-lyrics" class:unsynced={!lyrics.data.lines} bind:this={box}>
               {#if lyrics.data.lines}
@@ -324,9 +324,9 @@
     inset: 0;
     display: grid;
     place-items: center;
-    color: rgba(255, 255, 255, 0.6);
-    font-size: 18px;
-    font-weight: 600;
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 15px;
+    font-weight: 500;
   }
   .np-src {
     margin-top: 24px;

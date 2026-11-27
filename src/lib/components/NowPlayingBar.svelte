@@ -29,11 +29,11 @@
 <footer class="np-bar">
   <div class="np-left">
     {#if t}
-      <button onclick={() => (ui.rightPanel = 'nowplaying')} aria-label="Now playing view" style="flex-shrink:0">
+      <button onclick={() => (ui.fullscreenPlayer = true)} aria-label="Open Now Playing" title="Now Playing" style="flex-shrink:0">
         <Img thumbs={t.thumbnails} size={56} class="art" />
       </button>
       <div class="info">
-        <div class="np-title" role="link" tabindex="0" onclick={() => (t.album?.id ? go(`/album/${t.album.id}`) : (ui.rightPanel = 'nowplaying'))} onkeydown={() => {}} title={t.title}>{t.title}</div>
+        <div class="np-title" role="link" tabindex="0" onclick={() => (ui.fullscreenPlayer = true)} onkeydown={(e) => e.key === 'Enter' && (ui.fullscreenPlayer = true)} title={t.title}>{t.title}</div>
         <div class="np-artist">
           {#if t.explicit}<span class="ebadge">E</span>{/if}
           {#each t.artists as a, i}{#if i}{', '}{/if}{#if a.id}<a href="#/" onclick={(e) => { e.preventDefault(); go(t.type === 'episode' && a.id?.startsWith('MPSP') ? `/podcast/${a.id}` : `/artist/${a.id}`); }}>{a.name}</a>{:else}{a.name}{/if}{/each}
